@@ -1,0 +1,207 @@
+.container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+
+.bgOrbs {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.orb1,
+.orb2,
+.orb3 {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.4;
+}
+
+.orb1 {
+    width: 380px;
+    height: 380px;
+    background: var(--accent-purple);
+    top: -80px;
+    right: -80px;
+    animation: float 9s ease-in-out infinite;
+}
+
+.orb2 {
+    width: 320px;
+    height: 320px;
+    background: var(--accent-green);
+    bottom: -60px;
+    left: -60px;
+    animation: float 11s ease-in-out infinite reverse;
+}
+
+.orb3 {
+    width: 200px;
+    height: 200px;
+    background: var(--accent-orange);
+    top: 40%;
+    right: 30%;
+    animation: float 7s ease-in-out infinite;
+}
+
+.floatingIcons {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.foodIcon {
+    position: absolute;
+    font-size: 2rem;
+    left: var(--x);
+    top: var(--y);
+    animation: float 4s ease-in-out infinite;
+    animation-delay: var(--delay);
+    opacity: 0.3;
+}
+
+.card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 440px;
+    background: rgba(18, 18, 26, 0.85);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-xl);
+    padding: var(--space-2xl);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    animation: fadeInUp 0.6s ease-out;
+    box-shadow: var(--shadow-lg);
+}
+
+.cardHeader {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+}
+
+.logo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--accent-green);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 1.5rem;
+    margin-bottom: var(--space-md);
+}
+
+.title {
+    font-size: 1.8rem;
+    background: var(--gradient-cool);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--space-xs);
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+}
+
+.inputWrapper {
+    position: relative;
+}
+
+.inputIcon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    z-index: 1;
+}
+
+.error {
+    color: var(--accent-red);
+    font-size: 0.85rem;
+    padding: 10px 14px;
+    background: var(--accent-red-dim);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.successMessage {
+    text-align: center;
+    padding: var(--space-xl);
+    animation: scaleIn 0.4s ease-out;
+}
+
+.successIcon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: var(--space-md);
+}
+
+.successMessage h3 {
+    font-size: 1.3rem;
+    color: var(--accent-green);
+    margin-bottom: var(--space-sm);
+}
+
+.successMessage p {
+    color: var(--text-secondary);
+}
+
+.footer {
+    text-align: center;
+    margin-top: var(--space-lg);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.link {
+    color: var(--accent-green);
+    font-weight: 600;
+    transition: color var(--transition-fast);
+}
+
+.link:hover {
+    color: var(--accent-blue);
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: rotate 0.6s linear infinite;
+    display: inline-block;
+}
+
+@media (max-width: 480px) {
+    .card {
+        padding: var(--space-lg);
+    }
+
+    .title {
+        font-size: 1.4rem;
+    }
+}

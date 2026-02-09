@@ -1,0 +1,324 @@
+.profilePage {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.pageHeader {
+    margin-bottom: var(--space-xl);
+}
+
+.pageTitle {
+    font-size: 1.6rem;
+    background: var(--gradient-cool);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+}
+
+.pageSubtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* ========== Profile Card ========== */
+.profileCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    margin-bottom: var(--space-xl);
+    backdrop-filter: blur(16px);
+}
+
+.profileBanner {
+    height: 100px;
+    background: var(--gradient-primary);
+    background-size: 200% 200%;
+    animation: gradientShift 8s ease-in-out infinite;
+}
+
+.profileContent {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 var(--space-xl) var(--space-lg);
+    margin-top: -32px;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.avatarSection {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-md);
+}
+
+.avatarLarge {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-xl);
+    background: var(--gradient-cool);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #fff;
+    border: 3px solid var(--bg-primary);
+    flex-shrink: 0;
+}
+
+.profileInfo {
+    padding-bottom: 4px;
+}
+
+.profileName {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.profileEmail {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+.profileActions {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+/* ========== Two Column Layout ========== */
+.twoCol {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: var(--space-xl);
+    margin-bottom: var(--space-xl);
+}
+
+.section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-md);
+    backdrop-filter: blur(16px);
+}
+
+.sectionTitle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: var(--space-lg);
+    color: var(--text-primary);
+}
+
+/* ========== Dietary Preferences ========== */
+.dietGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.dietTag {
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    transition: all var(--transition-base);
+}
+
+.dietTag:not(:disabled):hover {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+.dietActive {
+    background: var(--accent-green-dim) !important;
+    border-color: var(--accent-green) !important;
+    color: var(--accent-green) !important;
+}
+
+.dietTag:disabled {
+    cursor: default;
+}
+
+/* ========== Calorie Goal ========== */
+.calorieGoal {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+
+.calorieNumber {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: var(--gradient-warm);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.calorieUnit {
+    font-size: 0.9rem;
+    color: var(--text-tertiary);
+}
+
+.calorieBar {
+    height: 8px;
+    background: var(--bg-glass);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-bottom: var(--space-sm);
+}
+
+.calorieBarFill {
+    height: 100%;
+    background: var(--gradient-warm);
+    border-radius: var(--radius-full);
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.calorieNote {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+/* ========== Quick Stats ========== */
+.quickStats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+}
+
+.quickStat {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--bg-glass);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-glass);
+}
+
+.quickStat>div {
+    display: flex;
+    flex-direction: column;
+}
+
+.quickValue {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.quickLabel {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+}
+
+/* ========== Achievements ========== */
+.achievementsGrid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.badge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: 14px var(--space-md);
+    border-radius: var(--radius-md);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    transition: all var(--transition-base);
+}
+
+.badge:hover {
+    background: var(--bg-glass-hover);
+    border-color: var(--border-glass-hover);
+}
+
+.badgeLocked {
+    opacity: 0.4;
+    filter: grayscale(0.5);
+}
+
+.badgeIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.badgeInfo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.badgeTitle {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.badgeDesc {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+}
+
+.badgeEarned {
+    color: var(--accent-yellow);
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* ========== Logout ========== */
+.logoutSection {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-xl) 0;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 768px) {
+    .twoCol {
+        grid-template-columns: 1fr;
+    }
+
+    .profileContent {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: var(--space-md);
+        margin-top: -24px;
+    }
+
+    .avatarLarge {
+        width: 56px;
+        height: 56px;
+        font-size: 1.5rem;
+    }
+
+    .quickStats {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,586 @@
+.dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.loadingContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: var(--space-md);
+    color: var(--text-secondary);
+}
+
+.loadingPulse {
+    color: var(--accent-green);
+    animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+/* ========== Welcome ========== */
+.welcomeSection {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-xl);
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.welcomeTitle {
+    font-size: 1.8rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+}
+
+.welcomeSubtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* ========== Stat Cards ========== */
+.statGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+}
+
+.statCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    backdrop-filter: blur(16px);
+    transition: all var(--transition-base);
+    position: relative;
+    overflow: hidden;
+}
+
+.statCard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.statCard:hover {
+    border-color: var(--border-glass-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.statCard:hover::before {
+    opacity: 1;
+}
+
+.statIcon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.statInfo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.statLabel {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+}
+
+.statValue {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.statTrend {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ========== Charts ========== */
+.chartsGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+}
+
+.chartCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    backdrop-filter: blur(16px);
+    transition: all var(--transition-base);
+}
+
+.chartCard:hover {
+    border-color: var(--border-glass-hover);
+}
+
+.chartHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-md);
+}
+
+.chartHeader h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.chartBadge {
+    font-size: 0.72rem;
+    padding: 4px 10px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-full);
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.chartBody {
+    height: 220px;
+    position: relative;
+}
+
+.chartBodyDoughnut {
+    height: 250px;
+    position: relative;
+}
+
+/* ========== Micronutrient Grid ========== */
+.microGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-top: var(--space-sm);
+}
+
+.microItem {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.microInfo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.microName {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.microValue {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.microBarBg {
+    height: 6px;
+    background: var(--bg-glass);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.microBarFill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========== Recent Sessions ========== */
+.recentSection {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    backdrop-filter: blur(16px);
+}
+
+.sectionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-md);
+}
+
+.sectionHeader h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.viewAll {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: var(--accent-green);
+    font-weight: 600;
+    transition: color var(--transition-fast);
+}
+
+.viewAll:hover {
+    color: var(--accent-blue);
+}
+
+.sessionsList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.sessionItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: 14px var(--space-md);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    animation: fadeInUp 0.4s ease-out both;
+}
+
+.sessionItem:hover {
+    background: var(--bg-glass-hover);
+}
+
+.sessionIcon {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-green-dim);
+    color: var(--accent-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sessionInfo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.sessionName {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.sessionMeta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+}
+
+.sessionStats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.sessionCalories {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent-orange);
+}
+
+.sessionSpent {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+/* ========== Empty State ========== */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-3xl) var(--space-lg);
+    text-align: center;
+}
+
+.emptyIcon {
+    color: var(--text-muted);
+    margin-bottom: var(--space-md);
+}
+
+.emptyState h4 {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xs);
+}
+
+.emptyState p {
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+}
+
+/* ========== Macro Breakdown ========== */
+.macroLayout {
+    display: flex;
+    gap: var(--space-lg);
+    align-items: center;
+}
+
+.macroLayout .chartBodyDoughnut {
+    flex: 0 0 200px;
+    height: 200px;
+}
+
+.macroBreakdown {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.macroStatRow {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.macroStatHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.macroStatLabel {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.macroStatValue {
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.macroBarBg {
+    height: 6px;
+    background: var(--bg-glass);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.macroBarFill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========== AI Insights ========== */
+.aiInsightsSection {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    backdrop-filter: blur(16px);
+    margin-bottom: var(--space-xl);
+}
+
+.insightsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+}
+
+.insightsHeader h3 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.insightsBody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.insightCard {
+    padding: var(--space-md);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-base);
+}
+
+.insightCard:hover {
+    border-color: var(--border-glass-hover);
+    background: var(--bg-glass-hover);
+}
+
+.insightCardHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.insightCardIcon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.insightCardTitle {
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+.insightContent {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.predictionGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
+}
+
+.predictionItem {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-glass);
+}
+
+.predictionLabel {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+}
+
+.predictionValue {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--accent-green);
+}
+
+.aiSummaryText {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    white-space: pre-line;
+}
+
+.insightsTabs {
+    display: flex;
+    gap: var(--space-xs);
+    background: var(--bg-glass);
+    border-radius: var(--radius-full);
+    padding: 3px;
+}
+
+.insightTab {
+    padding: 6px 16px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.insightTabActive {
+    background: var(--accent-green);
+    color: var(--bg-primary);
+}
+
+.spinningIcon {
+    animation: spin 1s linear infinite;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 1024px) {
+    .statGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .statGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .chartsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .welcomeTitle {
+        font-size: 1.4rem;
+    }
+
+    .macroLayout {
+        flex-direction: column;
+    }
+
+    .macroLayout .chartBodyDoughnut {
+        flex: none;
+        width: 100%;
+    }
+
+    .predictionGrid {
+        grid-template-columns: 1fr 1fr;
+    }
+}

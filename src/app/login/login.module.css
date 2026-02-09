@@ -1,0 +1,209 @@
+.container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+
+/* ========== Background Orbs ========== */
+.bgOrbs {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.orb1,
+.orb2,
+.orb3 {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.4;
+}
+
+.orb1 {
+    width: 400px;
+    height: 400px;
+    background: var(--accent-green);
+    top: -100px;
+    left: -100px;
+    animation: float 8s ease-in-out infinite;
+}
+
+.orb2 {
+    width: 350px;
+    height: 350px;
+    background: var(--accent-blue);
+    bottom: -80px;
+    right: -80px;
+    animation: float 10s ease-in-out infinite reverse;
+}
+
+.orb3 {
+    width: 250px;
+    height: 250px;
+    background: var(--accent-purple);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: float 12s ease-in-out infinite;
+}
+
+/* ========== Floating Food Icons ========== */
+.floatingIcons {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.foodIcon {
+    position: absolute;
+    font-size: 2rem;
+    left: var(--x);
+    top: var(--y);
+    animation: float 4s ease-in-out infinite;
+    animation-delay: var(--delay);
+    opacity: 0.3;
+}
+
+/* ========== Card ========== */
+.card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 440px;
+    background: rgba(18, 18, 26, 0.85);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-xl);
+    padding: var(--space-2xl);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    animation: fadeInUp 0.6s ease-out;
+    box-shadow: var(--shadow-lg);
+}
+
+.cardHeader {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+}
+
+.logo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--accent-green);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 1.5rem;
+    margin-bottom: var(--space-md);
+}
+
+.title {
+    font-size: 1.8rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--space-xs);
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* ========== Form ========== */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+}
+
+.inputWrapper {
+    position: relative;
+}
+
+.inputIcon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    z-index: 1;
+}
+
+.error {
+    color: var(--accent-red);
+    font-size: 0.85rem;
+    padding: 10px 14px;
+    background: var(--accent-red-dim);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* ========== Divider ========== */
+.divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin: var(--space-lg) 0;
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-glass);
+}
+
+/* ========== Footer ========== */
+.footer {
+    text-align: center;
+    margin-top: var(--space-lg);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.link {
+    color: var(--accent-green);
+    font-weight: 600;
+    transition: color var(--transition-fast);
+}
+
+.link:hover {
+    color: var(--accent-blue);
+}
+
+/* ========== Spinner ========== */
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: rotate 0.6s linear infinite;
+}
+
+@media (max-width: 480px) {
+    .card {
+        padding: var(--space-lg);
+    }
+
+    .title {
+        font-size: 1.4rem;
+    }
+}
