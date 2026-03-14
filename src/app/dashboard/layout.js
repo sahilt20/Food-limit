@@ -118,10 +118,10 @@ export default function DashboardLayout({ children }) {
                 </nav>
 
                 <div className={styles.sidebarFooter}>
-                    <a href="/FoodLimit.apk" download className={styles.downloadBtn} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'var(--accent-primary, #6366f1)', color: 'white', borderRadius: '0.5rem', textDecoration: 'none', marginBottom: '1rem', fontWeight: '500', transition: 'opacity 0.2s' }} onMouseOver={e => e.currentTarget.style.opacity = '0.9'} onMouseOut={e => e.currentTarget.style.opacity = '1'}>
+                    <button onClick={() => alert("To install the app on mobile: Open this site in Chrome/Safari, tap the browser menu (3 dots or share icon), and select 'Add to Home Screen'. It will install natively!")} className={styles.downloadBtn} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'var(--accent-primary, #6366f1)', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', outline: 'none', width: '100%', marginBottom: '1rem', fontWeight: '500', transition: 'opacity 0.2s', textAlign: 'left' }} onMouseOver={e => e.currentTarget.style.opacity = '0.9'} onMouseOut={e => e.currentTarget.style.opacity = '1'}>
                         <Download size={18} />
                         <span>Get Android App</span>
-                    </a>
+                    </button>
                     <div className={styles.userInfo}>
                         <div className={styles.userAvatar}>
                             {(profile?.full_name || 'U').charAt(0).toUpperCase()}

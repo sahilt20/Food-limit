@@ -274,4 +274,8 @@
     .pageContent {
         padding: var(--space-md);
     }
+    
+    .topbar {
+        padding: 0 var(--space-md);
+    }
 }
