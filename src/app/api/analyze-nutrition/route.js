@@ -1,102 +1,136 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
+import { generateJSON } from '@/lib/aiProvider';
+import { lookupNutrition } from '@/lib/nutritionDB';
+import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
 
 export async function POST(request) {
-    try {
-        const apiKey = process.env.GEMINI_API_KEY;
+    const rl = checkRateLimit(request);
+    if (!rl.allowed) {
+        return NextResponse.json(
+            { error: 'Too many requests. Please try again later.' },
+            { status: 429, headers: rateLimitHeaders(rl) }
+        );
+    }
 
-        if (!apiKey) {
+    try {
+        const { items } = await request.json();
+
+        if (!items || items.length === 0) {
             return NextResponse.json(
-                { error: 'Gemini API key not configured. Add GEMINI_API_KEY to your .env.local file.' },
-                { status: 500 }
+                { error: 'No items provided' },
+                { status: 400 }
             );
         }
 
-        const { items } = await request.json();
-
-        if (!items || !Array.isArray(items) || items.length === 0) {
-            return NextResponse.json({ error: 'No items provided' }, { status: 400 });
-        }
-
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
-        const itemList = items.map((item, i) =>
-            `${i + 1}. ${item.name} — ${item.quantity} ${item.unit}`
+        const itemsList = items.map(i =>
+            `- ${i.name} (${i.quantity} ${i.unit}, $${i.price || 0})`
         ).join('\n');
 
         const prompt = `You are a nutrition expert. Analyze these grocery items and provide detailed nutrition data.
 
 Items:
-${itemList}
+${itemsList}
 
-Return ONLY a valid JSON object (no markdown, no code fences):
+Provide a JSON response with this exact structure:
 {
-  "items": [
-    {
-      "name": "item name",
-      "calories": 150,
-      "protein_g": 10.5,
-      "carbs_g": 20.0,
-      "fat_g": 5.2,
-      "fiber_g": 3.1,
-      "sugar_g": 8.0,
-      "salt_g": 0.5,
-      "vitamin_c_mg": 12.0,
-      "vitamin_a_mcg": 100,
-      "iron_mg": 2.1,
-      "calcium_mg": 50,
-      "potassium_mg": 300,
-      "vitamin_d_mcg": 0,
-      "category": "Fruits/Vegetables/Protein/Dairy/Grains/Legumes/Oils/Snacks/Beverages/Spices/Other",
-      "health_score": 85,
-      "health_notes": "Brief note about this food's nutritional value"
+    "items": [
+        {
+            "name": "item name",
+            "calories": 150,
+            "protein_g": 10,
+            "carbs_g": 20,
+            "fat_g": 5,
+            "fiber_g": 3,
+            "sugar_g": 8,
+            "sodium_mg": 200,
+            "health_score": 75,
+            "category": "Protein"
+        }
+    ],
+    "summary": {
+        "total_calories": 1500,
+        "total_protein": 80,
+        "total_carbs": 200,
+        "total_fat": 50,
+        "overall_health_score": 72,
+        "highlights": ["Good protein variety", "Consider more fiber"],
+        "concerns": ["High sodium in processed items"]
     }
-  ],
-  "summary": {
-    "total_calories": 0,
-    "total_protein_g": 0,
-    "total_carbs_g": 0,
-    "total_fat_g": 0,
-    "total_sugar_g": 0,
-    "total_salt_g": 0,
-    "total_fiber_g": 0,
-    "overall_health_score": 75,
-    "diet_assessment": "Brief overall assessment of this grocery haul's nutritional quality"
-  }
 }
 
-Rules:
-- Calculate nutrition per the QUANTITY and UNIT specified (e.g., 2 kg of chicken → nutrition for 2kg)
-- health_score is 0-100, where 100 = extremely healthy
-- Be accurate with real-world nutritional data
-- Include ALL items from the list`;
+IMPORTANT: Return ONLY valid JSON. No markdown, no extra text.`;
 
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
-
-        let parsed;
         try {
-            parsed = JSON.parse(responseText);
-        } catch {
-            const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-            if (jsonMatch) {
-                parsed = JSON.parse(jsonMatch[1].trim());
-            } else {
-                const objMatch = responseText.match(/\{[\s\S]*\}/);
-                if (objMatch) {
-                    parsed = JSON.parse(objMatch[0]);
-                } else {
-                    throw new Error('Could not parse AI response');
-                }
-            }
-        }
+            const { data, provider } = await generateJSON(prompt);
+            return NextResponse.json(
+                { data, provider },
+                { headers: rateLimitHeaders(rl) }
+            );
+        } catch (aiError) {
+            // AI failed — fall back to local nutrition DB
+            console.warn('AI nutrition failed, using local DB:', aiError.message);
 
-        return NextResponse.json({ success: true, data: parsed });
+            const UNIT_TO_GRAMS = {
+                g: 1, kg: 1000, piece: 150, oz: 28.35,
+                lb: 453.6, cup: 240, ml: 1, L: 1000,
+            };
+
+            const localItems = items.map(item => {
+                const gramsMultiplier = UNIT_TO_GRAMS[item.unit] || 100;
+                const totalGrams = (item.quantity || 1) * gramsMultiplier;
+                const nutrition = lookupNutrition(item.name, totalGrams);
+
+                if (nutrition) {
+                    return {
+                        name: item.name,
+                        calories: Math.round(nutrition.calories || 0),
+                        protein_g: Math.round((nutrition.protein_g || 0) * 10) / 10,
+                        carbs_g: Math.round((nutrition.carbs_g || 0) * 10) / 10,
+                        fat_g: Math.round((nutrition.fat_g || 0) * 10) / 10,
+                        fiber_g: Math.round((nutrition.fiber_g || 0) * 10) / 10,
+                        sugar_g: Math.round((nutrition.sugar_g || 0) * 10) / 10,
+                        sodium_mg: Math.round(nutrition.sodium_mg || 0),
+                        health_score: nutrition.health_score || 70,
+                        category: nutrition.category || item.category || 'Other',
+                    };
+                }
+                return {
+                    name: item.name,
+                    calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0,
+                    fiber_g: 0, sugar_g: 0, sodium_mg: 0,
+                    health_score: 50,
+                    category: item.category || 'Other',
+                };
+            });
+
+            const totalCal = localItems.reduce((s, i) => s + i.calories, 0);
+            const totalPro = localItems.reduce((s, i) => s + i.protein_g, 0);
+            const totalCarbs = localItems.reduce((s, i) => s + i.carbs_g, 0);
+            const totalFat = localItems.reduce((s, i) => s + i.fat_g, 0);
+
+            return NextResponse.json({
+                data: {
+                    items: localItems,
+                    summary: {
+                        total_calories: totalCal,
+                        total_protein: totalPro,
+                        total_carbs: totalCarbs,
+                        total_fat: totalFat,
+                        overall_health_score: Math.round(
+                            localItems.reduce((s, i) => s + i.health_score, 0) / (localItems.length || 1)
+                        ),
+                        highlights: ['Data from local nutritionDB (AI unavailable)'],
+                        concerns: [],
+                    },
+                },
+                provider: 'local',
+                warning: aiError.message,
+            }, { headers: rateLimitHeaders(rl) });
+        }
     } catch (error) {
         console.error('Nutrition analysis error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to analyze nutrition' },
+            { error: error.message || 'Nutrition analysis failed' },
             { status: 500 }
         );
     }

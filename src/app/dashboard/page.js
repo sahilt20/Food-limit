@@ -74,25 +74,37 @@ export default function DashboardPage() {
     const [aiInsights, setAiInsights] = useState(null);
     const [insightsLoading, setInsightsLoading] = useState(false);
     const [insightsPeriod, setInsightsPeriod] = useState('week');
+    const [insightsError, setInsightsError] = useState('');
+    const [aiProvider, setAiProvider] = useState('');
 
     useEffect(() => {
         const loadData = async () => {
+            // Check real auth first
+            try {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    localStorage.removeItem('foodlimit_demo');
+                    const { data } = await supabase
+                        .from('grocery_sessions')
+                        .select('*')
+                        .order('session_date', { ascending: false })
+                        .limit(10);
+                    setSessions(data?.length ? data : DEMO_SESSIONS);
+                    setIsDemo(!data?.length);
+                    setLoading(false);
+                    return;
+                }
+            } catch {
+                // Auth failed
+            }
+
+            // Fall back to demo
             const demo = localStorage.getItem('foodlimit_demo');
             if (demo) {
                 setIsDemo(true);
                 setSessions(DEMO_SESSIONS);
-                setLoading(false);
-                return;
             }
-
-            const supabase = createClient();
-            const { data } = await supabase
-                .from('grocery_sessions')
-                .select('*')
-                .order('session_date', { ascending: false })
-                .limit(10);
-
-            setSessions(data || []);
             setLoading(false);
         };
         loadData();
@@ -101,6 +113,7 @@ export default function DashboardPage() {
     const fetchAiInsights = async (period) => {
         setInsightsLoading(true);
         setInsightsPeriod(period);
+        setInsightsError('');
         try {
             const response = await fetch('/api/ai-analytics', {
                 method: 'POST',
@@ -108,11 +121,17 @@ export default function DashboardPage() {
                 body: JSON.stringify({ sessions, period }),
             });
             const data = await response.json();
-            if (response.ok && data.data) {
+            if (data.data) {
                 setAiInsights(data.data);
+                setAiProvider(data.provider || '');
+                if (data.warning) {
+                    setInsightsError(`⚡ Using fallback data (${data.provider || 'local'}). Add an AI API key for richer insights.`);
+                }
+            } else if (data.error) {
+                setInsightsError(data.error);
             }
         } catch (e) {
-            // Silently fail
+            setInsightsError('Failed to load AI insights. Check your connection and try again.');
         } finally {
             setInsightsLoading(false);
         }
@@ -418,13 +437,25 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {!aiInsights && !insightsLoading && (
+                {!aiInsights && !insightsLoading && !insightsError && (
                     <div style={{ textAlign: 'center', padding: 'var(--space-lg)' }}>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>
                             Get AI-powered predictions, nutrition grades, and personalized insights
                         </p>
                         <button onClick={() => fetchAiInsights('week')} className="btn-primary" style={{ padding: '12px 24px' }}>
                             <Brain size={16} /> Generate AI Insights
+                        </button>
+                    </div>
+                )}
+
+                {insightsError && !insightsLoading && (
+                    <div style={{ textAlign: 'center', padding: 'var(--space-lg)', background: 'rgba(255,180,50,0.08)', borderRadius: 'var(--radius-lg)', margin: 'var(--space-md)' }}>
+                        <AlertTriangle size={24} style={{ color: 'var(--accent-yellow)', marginBottom: 'var(--space-sm)' }} />
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)', fontSize: '0.9rem' }}>
+                            {insightsError}
+                        </p>
+                        <button onClick={() => fetchAiInsights(insightsPeriod)} className="btn-secondary" style={{ padding: '10px 20px' }}>
+                            🔄 Retry
                         </button>
                     </div>
                 )}

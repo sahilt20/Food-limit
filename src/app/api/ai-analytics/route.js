@@ -1,122 +1,131 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
+import { generateJSON } from '@/lib/aiProvider';
+import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
 
 export async function POST(request) {
-    try {
-        const apiKey = process.env.GEMINI_API_KEY;
-
-        if (!apiKey) {
-            return NextResponse.json(
-                { error: 'Gemini API key not configured' },
-                { status: 500 }
-            );
-        }
-
-        const { sessions, period = 'week' } = await request.json();
-
-        if (!sessions || !Array.isArray(sessions) || sessions.length === 0) {
-            return NextResponse.json({ error: 'No session data provided' }, { status: 400 });
-        }
-
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
-        const sessionData = sessions.map((s, i) =>
-            `${i + 1}. "${s.session_name}" on ${s.session_date} at ${s.store_name || 'unknown store'} — ${s.total_items || 0} items, ${s.total_calories || 0} cal, $${(s.total_spent || 0).toFixed(2)}`
-        ).join('\n');
-
-        const prompt = `You are an advanced nutrition and grocery analytics AI. Analyze this grocery shopping data and provide comprehensive insights.
-
-Shopping History:
-${sessionData}
-
-Analysis Period: ${period} (week/month/year)
-
-Return ONLY a valid JSON object (no markdown, no code fences):
-{
-  "consumption_predictions": {
-    "estimated_days_supply": 7,
-    "items_likely_to_run_out_first": ["item1", "item2", "item3"],
-    "next_shopping_predicted": "YYYY-MM-DD",
-    "estimated_weekly_spend": 75.00,
-    "estimated_monthly_spend": 300.00
-  },
-  "nutrition_insights": {
-    "daily_calorie_average": 2100,
-    "protein_adequacy": "sufficient/insufficient/excessive",
-    "fiber_assessment": "good/needs improvement",
-    "sugar_alert": "within limits/high/very high",
-    "salt_assessment": "within limits/high/concerning",
-    "vitamin_gaps": ["vitamin D", "calcium"],
-    "nutrition_grade": "A/B/C/D/F",
-    "nutrition_grade_explanation": "Brief explanation of the grade"
-  },
-  "spending_analytics": {
-    "cost_per_calorie": 0.05,
-    "most_expensive_category": "Protein",
-    "best_value_items": ["item1", "item2"],
-    "potential_savings": "$12-15/week by switching to store brands",
-    "spending_trend": "increasing/stable/decreasing"
-  },
-  "ai_summary": {
-    "title": "Your ${period}ly Nutrition Report",
-    "overview": "2-3 sentence overview of shopping and nutrition habits",
-    "highlights": ["positive highlight 1", "positive highlight 2"],
-    "concerns": ["concern 1 if any", "concern 2 if any"],
-    "action_items": [
-      "Specific actionable recommendation 1",
-      "Specific actionable recommendation 2",
-      "Specific actionable recommendation 3"
-    ]
-  },
-  "health_predictions": {
-    "weight_impact": "maintenance/slight gain/slight loss based on calorie intake",
-    "energy_level_forecast": "good/moderate/low based on macro balance",
-    "immune_support_score": 72,
-    "gut_health_indicator": "good/fair/needs attention"
-  },
-  "food_waste_risk": {
-    "high_waste_risk_items": ["perishable item 1", "perishable item 2"],
-    "tips_to_reduce_waste": ["tip 1", "tip 2"],
-    "estimated_waste_percentage": 15
+  // Rate limit check
+  const rl = checkRateLimit(request);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: rateLimitHeaders(rl) }
+    );
   }
+
+  try {
+    const { sessions, period = 'week' } = await request.json();
+
+    if (!sessions || sessions.length === 0) {
+      return NextResponse.json(
+        { error: 'No session data provided' },
+        { status: 400 }
+      );
+    }
+
+    const prompt = `You are an advanced nutrition and grocery analytics AI. Analyze this grocery shopping data and provide comprehensive insights.
+
+Shopping Data (${period} period):
+${JSON.stringify(sessions, null, 2)}
+
+Provide a detailed JSON response with this exact structure:
+{
+    "consumption_patterns": {
+        "summary": "Brief overview of eating patterns",
+        "top_categories": ["category1", "category2"],
+        "frequency_insights": "How often they shop and what they buy most",
+        "variety_score": 75
+    },
+    "nutrition_analysis": {
+        "overall_score": 78,
+        "strengths": ["Good protein intake", "Variety of fruits"],
+        "weaknesses": ["Low fiber", "High sodium"],
+        "macro_balance": "Description of macro nutrient balance",
+        "micro_highlights": "Notable vitamin/mineral patterns"
+    },
+    "spending_insights": {
+        "total_period": 245.50,
+        "average_per_trip": 61.38,
+        "most_expensive_category": "Protein",
+        "budget_tips": ["Buy seasonal produce", "Consider bulk grains"],
+        "cost_per_calorie": 0.02
+    },
+    "health_predictions": {
+        "positive_trends": ["Increasing vegetable intake"],
+        "concerns": ["Processed food frequency rising"],
+        "recommendations": ["Add more leafy greens", "Reduce sugar intake"],
+        "projected_health_score": 82
+    },
+    "food_waste_risk": {
+        "risk_level": "medium",
+        "high_risk_items": ["Leafy greens", "Berries"],
+        "prevention_tips": ["Freeze berries within 3 days", "Plan meals around perishables"],
+        "estimated_waste_percent": 15
+    },
+    "meal_suggestions": {
+        "based_on_purchases": ["Chicken stir-fry with broccoli", "Oatmeal with berries"],
+        "missing_ingredients": ["olive oil", "garlic"],
+        "weekly_meal_plan_tip": "A brief tip for meal planning"
+    }
 }
 
-Rules:
-- Base ALL estimates on the actual shopping data provided
-- Be specific with numbers and dates
-- For consumption predictions, consider typical household consumption rates
-- For nutrition insights, compare against recommended daily values
-- Be honest about gaps or concerns, but keep tone constructive
-- If data is limited, say so and provide estimates with caveats
-- Make action items specific and achievable`;
+IMPORTANT: Return ONLY valid JSON. No markdown, no explanations outside the JSON.`;
 
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
+    const { data, provider } = await generateJSON(prompt);
+    return NextResponse.json(
+      { data, provider },
+      { headers: rateLimitHeaders(rl) }
+    );
+  } catch (error) {
+    console.error('AI analytics error:', error);
 
-        let parsed;
-        try {
-            parsed = JSON.parse(responseText);
-        } catch {
-            const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-            if (jsonMatch) {
-                parsed = JSON.parse(jsonMatch[1].trim());
-            } else {
-                const objMatch = responseText.match(/\{[\s\S]*\}/);
-                if (objMatch) {
-                    parsed = JSON.parse(objMatch[0]);
-                } else {
-                    throw new Error('Could not parse AI response');
-                }
-            }
-        }
+    // Return helpful template data as local fallback
+    const fallbackData = {
+      consumption_patterns: {
+        summary: 'AI analysis temporarily unavailable. Add an OpenAI key as fallback.',
+        top_categories: ['General'],
+        frequency_insights: 'Unable to analyze — try again shortly.',
+        variety_score: 0,
+      },
+      nutrition_analysis: {
+        overall_score: 0,
+        strengths: [],
+        weaknesses: [],
+        macro_balance: 'Analysis unavailable',
+        micro_highlights: 'Analysis unavailable',
+      },
+      spending_insights: {
+        total_period: 0,
+        average_per_trip: 0,
+        most_expensive_category: 'N/A',
+        budget_tips: [],
+        cost_per_calorie: 0,
+      },
+      health_predictions: {
+        positive_trends: [],
+        concerns: [],
+        recommendations: ['Configure an AI API key for personalized insights'],
+        projected_health_score: 0,
+      },
+      food_waste_risk: {
+        risk_level: 'unknown',
+        high_risk_items: [],
+        prevention_tips: [],
+        estimated_waste_percent: 0,
+      },
+      meal_suggestions: {
+        based_on_purchases: [],
+        missing_ingredients: [],
+        weekly_meal_plan_tip: 'Configure an AI API key for meal suggestions',
+      },
+    };
 
-        return NextResponse.json({ success: true, data: parsed });
-    } catch (error) {
-        console.error('AI analytics error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to get analytics' },
-            { status: 500 }
-        );
-    }
+    return NextResponse.json(
+      {
+        data: fallbackData,
+        provider: 'local',
+        warning: error.message,
+      },
+      { status: 200, headers: rateLimitHeaders(rl) }
+    );
+  }
 }

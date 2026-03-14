@@ -14,6 +14,7 @@ import {
     X,
     Sparkles,
     ChevronRight,
+    Download,
 } from 'lucide-react';
 import styles from './layout.module.css';
 
@@ -34,33 +35,46 @@ export default function DashboardLayout({ children }) {
 
     useEffect(() => {
         const getUser = async () => {
-            // Check demo mode
+            // Always check real auth FIRST — so real login isn't overridden by stale demo flag
+            try {
+                const { data: { user: authUser } } = await supabase.auth.getUser();
+                if (authUser) {
+                    // Real authenticated user — clear any stale demo flag
+                    localStorage.removeItem('foodlimit_demo');
+                    setUser(authUser);
+                    const { data } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', authUser.id)
+                        .single();
+                    if (data) setProfile(data);
+                    return;
+                }
+            } catch {
+                // Supabase auth check failed — continue to demo check
+            }
+
+            // Fall back to demo mode if flag is set
             const isDemo = localStorage.getItem('foodlimit_demo');
             if (isDemo) {
                 setUser({ email: 'demo@foodlimit.app', id: 'demo' });
                 setProfile({ full_name: 'Demo User' });
-                return;
-            }
-
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                setUser(user);
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single();
-                if (data) setProfile(data);
             }
         };
         getUser();
     }, []);
 
     const handleLogout = async () => {
+        // Clear demo mode
         localStorage.removeItem('foodlimit_demo');
-        await supabase.auth.signOut();
-        router.push('/login');
-        router.refresh();
+        // Sign out from Supabase
+        try {
+            await supabase.auth.signOut();
+        } catch {
+            // Ignore sign-out errors (e.g. no session)
+        }
+        // Hard redirect — router.push can fail with stale client state
+        window.location.href = '/login';
     };
 
     return (
@@ -104,6 +118,10 @@ export default function DashboardLayout({ children }) {
                 </nav>
 
                 <div className={styles.sidebarFooter}>
+                    <a href="/FoodLimit.apk" download className={styles.downloadBtn} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'var(--accent-primary, #6366f1)', color: 'white', borderRadius: '0.5rem', textDecoration: 'none', marginBottom: '1rem', fontWeight: '500', transition: 'opacity 0.2s' }} onMouseOver={e => e.currentTarget.style.opacity = '0.9'} onMouseOut={e => e.currentTarget.style.opacity = '1'}>
+                        <Download size={18} />
+                        <span>Get Android App</span>
+                    </a>
                     <div className={styles.userInfo}>
                         <div className={styles.userAvatar}>
                             {(profile?.full_name || 'U').charAt(0).toUpperCase()}

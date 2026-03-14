@@ -54,6 +54,26 @@ export default function ProfilePage() {
 
     useEffect(() => {
         const loadProfile = async () => {
+            // Check real auth FIRST
+            try {
+                const supabase = createClient();
+                const { data: { user: authUser } } = await supabase.auth.getUser();
+                if (authUser) {
+                    localStorage.removeItem('foodlimit_demo');
+                    setUser(authUser);
+                    const { data } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', authUser.id)
+                        .single();
+                    if (data) setProfile(data);
+                    return;
+                }
+            } catch {
+                // Auth check failed
+            }
+
+            // Fall back to demo
             const demo = localStorage.getItem('foodlimit_demo');
             if (demo) {
                 setIsDemo(true);
@@ -63,19 +83,6 @@ export default function ProfilePage() {
                     dietary_preferences: ['High-Protein', 'Mediterranean'],
                     daily_calorie_goal: 2200,
                 });
-                return;
-            }
-
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                setUser(user);
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single();
-                if (data) setProfile(data);
             }
         };
         loadProfile();
@@ -109,10 +116,13 @@ export default function ProfilePage() {
 
     const handleLogout = async () => {
         localStorage.removeItem('foodlimit_demo');
-        const supabase = createClient();
-        await supabase.auth.signOut();
-        router.push('/login');
-        router.refresh();
+        try {
+            const supabase = createClient();
+            await supabase.auth.signOut();
+        } catch {
+            // Ignore sign-out errors
+        }
+        window.location.href = '/login';
     };
 
     return (

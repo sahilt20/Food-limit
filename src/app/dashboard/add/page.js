@@ -150,7 +150,7 @@ export default function AddGroceriesPage() {
         if (!receiptImage) return;
         setIsProcessing(true);
         setOcrProgress(0);
-        setOcrStatus('Sending to Google Gemini AI...');
+        setOcrStatus('Sending to AI for analysis...');
         setError('');
 
         // Simulate progress while waiting for AI
@@ -162,7 +162,6 @@ export default function AddGroceriesPage() {
         }, 500);
 
         try {
-            // Try Gemini AI first
             const formData = new FormData();
             formData.append('receipt', receiptImage);
 
@@ -177,15 +176,12 @@ export default function AddGroceriesPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                // If Gemini fails (no API key), fall back to Tesseract.js
-                if (data.error?.includes('API key')) {
-                    clearInterval(progressInterval);
-                    setOcrStatus('Gemini not configured — using Tesseract.js OCR...');
-                    setOcrProgress(10);
-                    await runTesseractFallback();
-                    return;
-                }
-                throw new Error(data.error || 'Analysis failed');
+                // AI failed (quota exceeded, no keys, etc.) — fall back to browser OCR
+                clearInterval(progressInterval);
+                setOcrStatus('AI unavailable — switching to browser OCR (Tesseract.js)...');
+                setOcrProgress(10);
+                await runTesseractFallback();
+                return;
             }
 
             clearInterval(progressInterval);
@@ -193,6 +189,9 @@ export default function AddGroceriesPage() {
 
             const parsed = data.data;
             setOcrText(JSON.stringify(parsed, null, 2));
+
+            // Show which AI provider was used
+            const providerLabel = data.provider === 'openai' ? 'OpenAI' : 'Gemini';
 
             if (parsed.error) {
                 setError(parsed.error);
@@ -210,19 +209,26 @@ export default function AddGroceriesPage() {
                 }));
 
                 setExtractedItems(items);
-                setOcrStatus(`✨ AI found ${items.length} item(s)`);
+                setOcrStatus(`✨ ${providerLabel} found ${items.length} item(s)`);
 
                 if (parsed.store_name) {
                     setStoreName(parsed.store_name);
                 }
             }
         } catch (err) {
+            // Network error — also fall back to browser OCR
             clearInterval(progressInterval);
-            setError('Analysis failed: ' + (err.message || 'Unknown error'));
-            setOcrStatus('Failed');
+            setOcrStatus('Network error — switching to browser OCR...');
+            setOcrProgress(10);
+            try {
+                await runTesseractFallback();
+            } catch {
+                setError('All receipt analysis methods failed. Please enter items manually.');
+                setOcrStatus('Failed');
+                setIsProcessing(false);
+            }
         } finally {
             clearInterval(progressInterval);
-            setIsProcessing(false);
         }
     };
 

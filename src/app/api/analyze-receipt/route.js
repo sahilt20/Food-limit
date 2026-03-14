@@ -1,102 +1,100 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
+import { generateVisionJSON } from '@/lib/aiProvider';
+import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
 
 export async function POST(request) {
-    try {
-        const apiKey = process.env.GEMINI_API_KEY;
+    const rl = checkRateLimit(request);
+    if (!rl.allowed) {
+        return NextResponse.json(
+            { error: 'Too many requests. Please try again later.' },
+            { status: 429, headers: rateLimitHeaders(rl) }
+        );
+    }
 
-        if (!apiKey) {
+    try {
+        const formData = await request.formData();
+        const receipt = formData.get('receipt');
+
+        if (!receipt) {
             return NextResponse.json(
-                { error: 'Gemini API key not configured. Add GEMINI_API_KEY to your .env.local file.' },
-                { status: 500 }
+                { error: 'No receipt image provided' },
+                { status: 400 }
             );
         }
 
-        const formData = await request.formData();
-        const file = formData.get('receipt');
+        // Convert file to buffer, then base64
+        const bytes = await receipt.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const base64 = buffer.toString('base64');
+        const mimeType = receipt.type || 'image/jpeg';
 
-        if (!file) {
-            return NextResponse.json({ error: 'No image uploaded' }, { status: 400 });
-        }
+        const prompt = `You are an expert grocery receipt OCR parser. Carefully examine this receipt image and extract ALL food/grocery items.
 
-        // Convert file to base64
-        const bytes = await file.arrayBuffer();
-        const base64 = Buffer.from(bytes).toString('base64');
-        const mimeType = file.type || 'image/jpeg';
+CRITICAL INSTRUCTIONS:
+1. **Decode abbreviated names** — supermarket receipts use short codes. Expand them to full readable names:
+   - "JS BRTWATER 2L" → "Britvic Water 2L"
+   - "JS CC CHESTNUT MUSHR" → "Chestnut Mushrooms" 
+   - "JS S/SKIM MLK 1.136L" → "Semi-Skimmed Milk 1.136L"
+   - "ACTIVIA F/BERIS&CEX4" → "Activia Fruit Berries & Cereal x4"
+   - "ST EWE FREE EGGS X6" → "Free Range Eggs x6"
+   - "JS CHKN LIVER PATE" → "Chicken Liver Pate"
+   - "ACTIMEL MULTIFRT X8" → "Actimel Multifruit x8"
+   - "JS EXTRA LEAN PRK MI" → "Extra Lean Pork Mince"
+   - "JS CNFRENCE PEARS X4" → "Conference Pears x4"
+   Always decode to the FULL human-readable food name.
 
-        // Initialize Gemini
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+2. **Extract quantity from the item name** if it contains multipliers like "X4", "X6", "X8", "2L" etc.
 
-        const prompt = `Analyze this grocery receipt image. Extract all food/grocery items with their details.
+3. **Skip non-food lines**: "Nectar Price Saving", "PRICE REDUCTION", "BALANCE DUE", "GIFT CARD", "CHANGE", "SAVINGS", "PROMOTIONS", payment details, loyalty points, etc.
 
-Return ONLY a valid JSON object with this exact structure (no markdown, no code fences, no explanation):
+4. **Handle currency**: Prices may be in £ (GBP), $ (USD), or € (EUR). Convert to numeric values (e.g., £2.55 → 2.55).
+
+5. **Detect the store name** from the receipt header (e.g., "Sainsbury's", "Tesco", "Whole Foods").
+
+6. **Assign accurate categories** to each item.
+
+Return a JSON object:
 {
-  "store_name": "store name if visible, or empty string",
-  "items": [
-    {
-      "name": "item name (clean, readable name)",
-      "quantity": 1,
-      "unit": "piece",
-      "price": 0.00,
-      "category": "one of: Fruits, Vegetables, Protein, Dairy, Grains, Legumes, Oils, Snacks, Beverages, Spices, Other"
-    }
-  ],
-  "total": 0.00
+    "store_name": "Store Name",
+    "items": [
+        {
+            "name": "Full Human-Readable Item Name",
+            "quantity": 1,
+            "unit": "piece",
+            "price": 2.55,
+            "category": "Protein"
+        }
+    ],
+    "total": 20.41
 }
 
-Rules:
-- Extract every food/grocery item line you can see
-- For quantity, use the number shown or default to 1
-- For unit, use: piece, kg, g, lb, oz, L, ml, cup — default to "piece"
-- For price, extract the price shown for that item, or 0 if not visible
-- For category, classify each item into the most appropriate category
-- Clean up item names — capitalize properly, remove item codes/SKUs
-- Skip non-food items like bags, receipts metadata, tax lines, totals
-- If the image is not a receipt, return {"error": "This doesn't appear to be a grocery receipt", "items": []}`;
+Categories: Fruits, Vegetables, Protein, Dairy, Grains, Legumes, Oils, Snacks, Beverages, Spices, Other
 
-        const result = await model.generateContent([
-            prompt,
-            {
-                inlineData: {
-                    data: base64,
-                    mimeType,
-                },
-            },
-        ]);
+If the image is NOT a receipt, return: { "error": "This does not appear to be a grocery receipt" }
 
-        const responseText = result.response.text();
+IMPORTANT: Return ONLY valid JSON. No markdown, no code fences, no explanations.`;
 
-        // Parse JSON from response (handle potential markdown code fences)
-        let parsed;
         try {
-            // Try direct parse first
-            parsed = JSON.parse(responseText);
-        } catch {
-            // Try extracting from code fences
-            const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-            if (jsonMatch) {
-                parsed = JSON.parse(jsonMatch[1].trim());
-            } else {
-                // Try finding JSON object in the text
-                const objMatch = responseText.match(/\{[\s\S]*\}/);
-                if (objMatch) {
-                    parsed = JSON.parse(objMatch[0]);
-                } else {
-                    throw new Error('Could not parse AI response');
-                }
-            }
+            const { data, provider } = await generateVisionJSON(prompt, base64, mimeType);
+            return NextResponse.json(
+                { data, provider },
+                { headers: rateLimitHeaders(rl) }
+            );
+        } catch (aiError) {
+            // All AI providers failed — tell client to use Tesseract.js
+            return NextResponse.json(
+                {
+                    error: 'AI receipt analysis unavailable. The app will fall back to browser-based OCR.',
+                    fallback: 'tesseract',
+                    details: aiError.message,
+                },
+                { status: 503, headers: rateLimitHeaders(rl) }
+            );
         }
-
-        return NextResponse.json({
-            success: true,
-            data: parsed,
-            raw_text: responseText,
-        });
     } catch (error) {
-        console.error('Gemini API error:', error);
+        console.error('Receipt analysis error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to analyze receipt' },
+            { error: error.message || 'Receipt analysis failed' },
             { status: 500 }
         );
     }
