@@ -524,9 +524,169 @@
     background: var(--accent-green-dim);
 }
 
+/* ========== Smart Shopping Score ========== */
+.shoppingScoreCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-lg);
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.scoreHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-md);
+}
+
+.scoreTitle {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.scoreTotal {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+}
+
+.scoreBreakdown {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm) var(--space-lg);
+    margin-bottom: var(--space-md);
+}
+
+.scoreBreakdownItem {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.scoreBreakdownHeader {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.scoreBarBg {
+    height: 5px;
+    background: var(--bg-glass);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.scoreBarFill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.5s ease-out;
+}
+
+.scoreTips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+}
+
+.scoreTip {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    background: var(--accent-yellow-dim, rgba(234, 179, 8, 0.1));
+    color: var(--accent-yellow);
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(234, 179, 8, 0.15);
+}
+
+/* ========== Analysis Progress Bar ========== */
+.analysisProgress {
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: var(--space-md);
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.progressSteps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--space-sm);
+}
+
+.progressStep {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+
+.progressStepDot {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-full);
+    background: var(--bg-glass);
+    border: 2px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    transition: all 0.3s ease;
+}
+
+.progressStepActive .progressStepDot {
+    background: var(--accent-green-dim);
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+.progressStepCurrent .progressStepDot {
+    animation: pulseGlow 1.5s ease-in-out infinite;
+    box-shadow: 0 0 12px var(--accent-green-glow);
+}
+
+.progressStepLabel {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-align: center;
+}
+
+.progressStepActive .progressStepLabel {
+    color: var(--text-secondary);
+}
+
+.progressTrack {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-glass);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-bottom: var(--space-sm);
+}
+
+.progressTrackFill {
+    height: 100%;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-full);
+    transition: width 0.5s ease-out;
+}
+
+.progressText {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
 /* ========== Action Bar ========== */
 .actionBar {
     display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
     margin-bottom: var(--space-xl);
 }
@@ -935,5 +1095,17 @@
     .tableHeader span:nth-child(n+6),
     .tableRow span:nth-child(n+6) {
         display: none;
+    }
+
+    .scoreBreakdown {
+        grid-template-columns: 1fr;
+    }
+
+    .progressSteps {
+        gap: 2px;
+    }
+
+    .progressStepLabel {
+        font-size: 0.6rem;
     }
 }

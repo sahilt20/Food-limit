@@ -22,14 +22,46 @@ export async function POST(request) {
       );
     }
 
-    const prompt = `You are an advanced nutrition and grocery analytics AI. Analyze this grocery shopping data and provide comprehensive insights based on the household target.
+    // Optimize: Summarize session data to reduce token usage
+    const sessionSummary = sessions.map(s => ({
+      date: s.session_date,
+      store: s.store_name,
+      spent: s.total_spent,
+      calories: s.total_calories,
+      items: s.total_items,
+      categories: s.grocery_items?.reduce((acc, item) => {
+        acc[item.category] = (acc[item.category] || 0) + 1;
+        return acc;
+      }, {}),
+      top_items: s.grocery_items?.slice(0, 5).map(i => ({
+        name: i.name,
+        price: i.price,
+        category: i.category,
+        nutrition: i.nutrition_data?.[0] ? {
+          calories: i.nutrition_data[0].calories,
+          protein_g: i.nutrition_data[0].protein_g,
+          carbs_g: i.nutrition_data[0].carbs_g,
+          fat_g: i.nutrition_data[0].fat_g,
+          sugar_g: i.nutrition_data[0].sugar_g,
+          sodium_mg: i.nutrition_data[0].sodium_mg,
+        } : null
+      }))
+    }));
+
+    const prompt = `You are an advanced nutrition and grocery analytics AI. Analyze this grocery shopping data and provide comprehensive insights.
 
 Household Context:
 - Family Size: ${family_size} people
-- Target Daily Calories (Entire Household Combined): ${household_calorie_target} calories
+- Target Daily Calories (Entire Household): ${household_calorie_target} cal/day
 
-Shopping Data (${period} period):
-${JSON.stringify(sessions, null, 2)}
+Shopping Summary (${period}):
+Total Sessions: ${sessions.length}
+Total Spent: $${sessions.reduce((s, sess) => s + (sess.total_spent || 0), 0).toFixed(2)}
+Total Calories: ${sessions.reduce((s, sess) => s + (sess.total_calories || 0), 0).toLocaleString()}
+Total Items: ${sessions.reduce((s, sess) => s + (sess.total_items || 0), 0)}
+
+Sessions Detail:
+${JSON.stringify(sessionSummary, null, 2)}
 
 Provide a detailed JSON response with this exact structure:
 {

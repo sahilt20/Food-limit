@@ -28,12 +28,12 @@ export async function POST(request) {
 
         const prompt = `You are a nutrition expert. Analyze these grocery items and provide detailed nutrition data.
 
-CRITICAL INSTRUCTION: Calculate the TOTAL nutritional values scaled for the ENTIRE quantity and unit specified per item (e.g. if the item is "2 kg of chicken", provide the macros for 2 kg, not 100g).
+CRITICAL: Calculate TOTAL nutritional values scaled for the ENTIRE quantity per item (e.g. "2 kg chicken" = nutrients for 2000g, not 100g).
 
 Items:
 ${itemsList}
 
-Provide a JSON response with this exact structure:
+Return ONLY this JSON structure (no markdown, no extra text):
 {
     "items": [
         {
@@ -59,16 +59,17 @@ Provide a JSON response with this exact structure:
     ],
     "summary": {
         "total_calories": 1500,
-        "total_protein": 80,
-        "total_carbs": 200,
-        "total_fat": 50,
+        "total_protein_g": 80,
+        "total_carbs_g": 200,
+        "total_fat_g": 50,
+        "total_sugar_g": 30,
+        "total_salt_g": 2.5,
         "overall_health_score": 72,
+        "diet_assessment": "Balanced diet with good protein sources",
         "highlights": ["Good protein variety", "Consider more fiber"],
         "concerns": ["High sodium in processed items"]
     }
-}
-
-IMPORTANT: Return ONLY valid JSON. No markdown, no extra text.`;
+}`;
 
         try {
             const { data, provider } = await generateJSON(prompt);
@@ -100,6 +101,14 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no extra text.`;
                         fiber_g: Math.round((nutrition.fiber_g || 0) * 10) / 10,
                         sugar_g: Math.round((nutrition.sugar_g || 0) * 10) / 10,
                         sodium_mg: Math.round(nutrition.sodium_mg || 0),
+                        calcium_mg: Math.round(nutrition.calcium_mg || 0),
+                        iron_mg: Math.round((nutrition.iron_mg || 0) * 10) / 10,
+                        potassium_mg: Math.round(nutrition.potassium_mg || 0),
+                        vitamin_a_mcg: Math.round((nutrition.vitamin_a_mcg || 0) * 10) / 10,
+                        vitamin_c_mg: Math.round((nutrition.vitamin_c_mg || 0) * 10) / 10,
+                        vitamin_d_mcg: Math.round((nutrition.vitamin_d_mcg || 0) * 10) / 10,
+                        zinc_mg: Math.round((nutrition.zinc_mg || 0) * 10) / 10,
+                        magnesium_mg: Math.round((nutrition.magnesium_mg || 0) * 10) / 10,
                         health_score: nutrition.health_score || 70,
                         category: nutrition.category || item.category || 'Other',
                     };
@@ -120,18 +129,23 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no extra text.`;
             const totalPro = localItems.reduce((s, i) => s + i.protein_g, 0);
             const totalCarbs = localItems.reduce((s, i) => s + i.carbs_g, 0);
             const totalFat = localItems.reduce((s, i) => s + i.fat_g, 0);
+            const totalSugar = localItems.reduce((s, i) => s + i.sugar_g, 0);
+            const totalSodium = localItems.reduce((s, i) => s + i.sodium_mg, 0);
 
             return NextResponse.json({
                 data: {
                     items: localItems,
                     summary: {
                         total_calories: totalCal,
-                        total_protein: totalPro,
-                        total_carbs: totalCarbs,
-                        total_fat: totalFat,
+                        total_protein_g: totalPro,
+                        total_carbs_g: totalCarbs,
+                        total_fat_g: totalFat,
+                        total_sugar_g: totalSugar,
+                        total_salt_g: Math.round((totalSodium * 2.5 / 1000) * 10) / 10,
                         overall_health_score: Math.round(
                             localItems.reduce((s, i) => s + i.health_score, 0) / (localItems.length || 1)
                         ),
+                        diet_assessment: 'Nutrition data from local database',
                         highlights: ['Data from local nutritionDB (AI unavailable)'],
                         concerns: [],
                     },

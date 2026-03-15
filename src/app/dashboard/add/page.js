@@ -55,7 +55,8 @@ export default function AddGroceriesPage() {
     const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [analyzing, setAnalyzing] = useState(false);
-    const [analyzeStep, setAnalyzeStep] = useState(''); // New state for progress text
+    const [analyzeStep, setAnalyzeStep] = useState(0); // 0=idle, 1=local check, 2=AI analyzing, 3=recommendations, 4=done
+    const [analyzeStepText, setAnalyzeStepText] = useState('');
     const [aiSummary, setAiSummary] = useState(null);
     const [recommendations, setRecommendations] = useState(null);
     const [showFoodPicker, setShowFoodPicker] = useState(null);
@@ -73,6 +74,57 @@ export default function AddGroceriesPage() {
         fetchCurrency();
     }, []);
 
+    // 💾 AUTO-SAVE DRAFT - Restore draft on mount
+    useEffect(() => {
+        try {
+            const draft = localStorage.getItem('foodlimit_grocery_draft');
+            if (draft) {
+                const parsed = JSON.parse(draft);
+                // Only restore if less than 24 hours old
+                const draftAge = Date.now() - (parsed.timestamp || 0);
+                if (draftAge < 24 * 60 * 60 * 1000) {
+                    const shouldRestore = window.confirm(
+                        `Found unsaved work from ${new Date(parsed.timestamp).toLocaleString()}. Restore it?`
+                    );
+                    if (shouldRestore) {
+                        setSessionName(parsed.sessionName || '');
+                        setStoreName(parsed.storeName || '');
+                        setItems(parsed.items || [{ id: 1, name: '', quantity: 1, unit: 'piece', price: 0, category: 'Other' }]);
+                    } else {
+                        localStorage.removeItem('foodlimit_grocery_draft');
+                    }
+                } else {
+                    // Clean up old drafts
+                    localStorage.removeItem('foodlimit_grocery_draft');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to restore draft:', err);
+        }
+    }, []);
+
+    // 💾 AUTO-SAVE DRAFT - Save every 30 seconds
+    useEffect(() => {
+        const autoSaveInterval = setInterval(() => {
+            // Only save if there's actual data
+            if (sessionName || storeName || items.some(i => i.name.trim())) {
+                try {
+                    localStorage.setItem('foodlimit_grocery_draft', JSON.stringify({
+                        sessionName,
+                        storeName,
+                        items,
+                        timestamp: Date.now(),
+                    }));
+                    console.log('💾 Auto-saved draft');
+                } catch (err) {
+                    console.error('Failed to auto-save:', err);
+                }
+            }
+        }, 30000); // Every 30 seconds
+
+        return () => clearInterval(autoSaveInterval);
+    }, [sessionName, storeName, items]);
+
     // Receipt upload state
     const [receiptImage, setReceiptImage] = useState(null);
     const [receiptPreview, setReceiptPreview] = useState(null);
@@ -85,8 +137,9 @@ export default function AddGroceriesPage() {
 
     const allFoods = getAllFoods();
 
-    const addItem = () => {
-        setItems([...items, {
+    // 🔧 FIX RACE CONDITIONS - Use useCallback with functional updates
+    const addItem = useCallback(() => {
+        setItems(prevItems => [...prevItems, {
             id: Date.now(),
             name: '',
             quantity: 1,
@@ -95,18 +148,20 @@ export default function AddGroceriesPage() {
             category: 'Other',
         }]);
         setAnalyzed(false);
-    };
+    }, []);
 
-    const removeItem = (id) => {
-        if (items.length <= 1) return;
-        setItems(items.filter(i => i.id !== id));
+    const removeItem = useCallback((id) => {
+        setItems(prevItems => {
+            if (prevItems.length <= 1) return prevItems;
+            return prevItems.filter(i => i.id !== id);
+        });
         setAnalyzed(false);
-    };
+    }, []);
 
-    const updateItem = (id, field, value) => {
-        setItems(items.map(i => i.id === id ? { ...i, [field]: value } : i));
+    const updateItem = useCallback((id, field, value) => {
+        setItems(prevItems => prevItems.map(i => i.id === id ? { ...i, [field]: value } : i));
         setAnalyzed(false);
-    };
+    }, []);
 
     const selectFood = (itemId, food) => {
         setItems(items.map(i => i.id === itemId ? {
@@ -142,12 +197,27 @@ export default function AddGroceriesPage() {
             setError('Please upload an image file (JPG, PNG, etc.)');
             return;
         }
+
+        // 🔧 FIX MEMORY LEAK - Revoke old blob URL before creating new one
+        if (receiptPreview) {
+            URL.revokeObjectURL(receiptPreview);
+        }
+
         setReceiptImage(file);
         setReceiptPreview(URL.createObjectURL(file));
         setOcrText('');
         setExtractedItems([]);
         setError('');
     };
+
+    // 🔧 FIX MEMORY LEAK - Cleanup blob URL on unmount
+    useEffect(() => {
+        return () => {
+            if (receiptPreview) {
+                URL.revokeObjectURL(receiptPreview);
+            }
+        };
+    }, [receiptPreview]);
 
     const clearReceipt = () => {
         setReceiptImage(null);
@@ -329,23 +399,116 @@ export default function AddGroceriesPage() {
         }
 
         setAnalyzing(true);
-        setAnalyzeStep('Step 1/2: Analyzing nutrition macros...');
+        setAnalyzeStep(1);
+        setAnalyzeStepText('Checking local nutrition database...');
         setError('');
         setAiSummary(null);
         setRecommendations(null);
         setNutritionResults([]);
 
         try {
-            // Call AI nutrition analysis
-            const response = await fetch('/api/analyze-nutrition', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: validItems }),
+            // 🎯 SMART LOCAL DB PRE-CHECK - Check local DB first to save AI costs
+            const localMatches = validItems.map(item => {
+                const gramsMultiplier = UNIT_TO_GRAMS[item.unit] || 100;
+                const totalGrams = item.quantity * gramsMultiplier;
+                const localNutrition = lookupNutrition(item.name, totalGrams);
+                return {
+                    item,
+                    localNutrition,
+                    matched: !!localNutrition
+                };
             });
 
-            const data = await response.json();
+            const allMatchedLocally = localMatches.every(m => m.matched);
+            const unmatchedItems = localMatches.filter(m => !m.matched).map(m => m.item);
+            const matchedCount = localMatches.filter(m => m.matched).length;
 
-            if (!response.ok) {
+            console.log(`💡 Local DB: ${matchedCount}/${validItems.length} items found locally`);
+
+            let nutritionResponse;
+
+            // If ALL items found in local DB, skip AI entirely (FREE & INSTANT!)
+            if (allMatchedLocally) {
+                console.log('✅ 100% local match - Skipping AI call!');
+                setAnalyzeStep(3);
+                setAnalyzeStepText('All items found locally! Generating summary...');
+                const results = localMatches.map(m => ({
+                    ...m.item,
+                    nutrition: m.localNutrition,
+                    matched: true
+                }));
+                setNutritionResults(results);
+
+                // Create local summary
+                const totalCal = results.reduce((s, r) => s + (r.nutrition?.calories || 0), 0);
+                const totalPro = results.reduce((s, r) => s + (r.nutrition?.protein_g || 0), 0);
+                const totalCarbs = results.reduce((s, r) => s + (r.nutrition?.carbs_g || 0), 0);
+                const totalFat = results.reduce((s, r) => s + (r.nutrition?.fat_g || 0), 0);
+                const totalSugar = results.reduce((s, r) => s + (r.nutrition?.sugar_g || 0), 0);
+                const totalSodium = results.reduce((s, r) => s + (r.nutrition?.sodium_mg || 0), 0);
+
+                setAiSummary({
+                    total_calories: totalCal,
+                    total_protein_g: totalPro,
+                    total_carbs_g: totalCarbs,
+                    total_fat_g: totalFat,
+                    total_sugar_g: totalSugar,
+                    total_salt_g: Math.round((totalSodium * 2.5 / 1000) * 10) / 10,
+                    overall_health_score: Math.round(
+                        results.reduce((s, r) => s + (r.nutrition?.health_score || 70), 0) / results.length
+                    ),
+                    diet_assessment: 'Data from local nutrition database',
+                });
+
+                // Still fetch recommendations in background
+                fetch('/api/recommend-foods', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: validItems, storeName: storeName }),
+                }).then(async (res) => {
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.data) setRecommendations(data.data.recommendations);
+                    }
+                }).catch(() => {});
+
+                setAnalyzeStep(4);
+                setAnalyzeStepText('Done!');
+                setAnalyzed(true);
+                setAnalyzing(false);
+                return;
+            }
+
+            // If only SOME items matched locally, send only unmatched items to AI
+            setAnalyzeStep(2);
+            setAnalyzeStepText(`Analyzing ${unmatchedItems.length} item(s) with AI...`);
+            const itemsForAI = unmatchedItems.length > 0 ? unmatchedItems : validItems;
+            console.log(`🤖 Calling AI for ${itemsForAI.length}/${validItems.length} items`);
+
+            // 🚀 PARALLEL API CALLS - Run nutrition analysis and recommendations simultaneously
+            const [nutritionResponseResult, recommendationsResponse] = await Promise.all([
+                fetch('/api/analyze-nutrition', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: itemsForAI }),
+                }),
+                fetch('/api/recommend-foods', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: validItems, storeName: storeName }),
+                }).catch(err => {
+                    // Recommendations are optional - don't fail the whole analysis
+                    console.warn('Recommendations failed:', err);
+                    return null;
+                })
+            ]);
+
+            nutritionResponse = nutritionResponseResult;
+
+            // Process nutrition results
+            const data = await nutritionResponse.json();
+
+            if (!nutritionResponse.ok) {
                 // Fallback to local DB if AI unavailable
                 if (data.error?.includes('API key')) {
                     const results = items.map(item => {
@@ -366,9 +529,17 @@ export default function AddGroceriesPage() {
             const aiData = data.data;
             setAiSummary(aiData.summary);
 
-            // Map AI results back to items
+            // 🔄 HYBRID RESULTS - Merge local DB matches with AI results
             const results = items.map(item => {
                 if (!item.name.trim()) return { ...item, nutrition: null, matched: false };
+
+                // Check if we have local match first
+                const localMatch = localMatches.find(m => m.item.name === item.name);
+                if (localMatch && localMatch.matched) {
+                    return { ...item, nutrition: localMatch.localNutrition, matched: true };
+                }
+
+                // Otherwise, use AI result
                 const aiItem = aiData.items?.find(ai =>
                     ai.name.toLowerCase().includes(item.name.toLowerCase()) ||
                     item.name.toLowerCase().includes(ai.name.toLowerCase())
@@ -380,34 +551,25 @@ export default function AddGroceriesPage() {
             });
 
             setNutritionResults(results);
-            
-            // Advance progress and await recommendations before finalizing
-            setAnalyzeStep('Step 2/2: Finding healthier alternatives...');
-            await fetchRecommendations(validItems, storeName);
-            
+
+            // Process recommendations
+            setAnalyzeStep(3);
+            setAnalyzeStepText('Finding healthier alternatives...');
+            if (recommendationsResponse && recommendationsResponse.ok) {
+                const recsData = await recommendationsResponse.json();
+                if (recsData.data) {
+                    setRecommendations(recsData.data.recommendations);
+                }
+            }
+
+            setAnalyzeStep(4);
+            setAnalyzeStepText('Done!');
             setAnalyzed(true);
 
         } catch (err) {
             setError('Analysis failed: ' + (err.message || 'Unknown error'));
         } finally {
             setAnalyzing(false);
-            setAnalyzeStep('');
-        }
-    };
-
-    const fetchRecommendations = async (itemsList, store) => {
-        try {
-            const response = await fetch('/api/recommend-foods', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: itemsList, storeName: store }),
-            });
-            const data = await response.json();
-            if (response.ok && data.data) {
-                setRecommendations(data.data.recommendations);
-            }
-        } catch (e) {
-            // Silently fail — recommendations are optional
         }
     };
 
@@ -459,34 +621,47 @@ export default function AddGroceriesPage() {
 
             if (sessErr) throw sessErr;
 
-            // Insert items
-            for (const item of validItems) {
-                const { data: groceryItem, error: itemErr } = await supabase
-                    .from('grocery_items')
-                    .insert({
-                        session_id: session.id,
-                        name: item.name,
-                        quantity: item.quantity,
-                        unit: item.unit,
-                        price: item.price,
-                        category: item.category,
-                    })
-                    .select()
-                    .single();
+            // 🚀 BATCH INSERT - Insert all items at once (10x faster)
+            const groceryItemsData = validItems.map(item => ({
+                session_id: session.id,
+                name: item.name,
+                quantity: item.quantity,
+                unit: item.unit,
+                price: item.price,
+                category: item.category,
+            }));
 
-                if (itemErr) throw itemErr;
+            const { data: groceryItems, error: itemsErr } = await supabase
+                .from('grocery_items')
+                .insert(groceryItemsData)
+                .select();
 
-                // Insert nutrition data if available
-                if (item.nutrition) {
+            if (itemsErr) throw itemsErr;
+
+            // 🚀 BATCH INSERT - Insert all nutrition data at once
+            const nutritionDataArray = groceryItems
+                .map((groceryItem, idx) => {
+                    const item = validItems[idx];
+                    if (!item.nutrition) return null;
+
                     const { category, ...nutritionData } = item.nutrition;
-                    await supabase
-                        .from('nutrition_data')
-                        .insert({
-                            item_id: groceryItem.id,
-                            ...nutritionData,
-                        });
-                }
+                    return {
+                        item_id: groceryItem.id,
+                        ...nutritionData,
+                    };
+                })
+                .filter(Boolean); // Remove null entries
+
+            if (nutritionDataArray.length > 0) {
+                const { error: nutritionErr } = await supabase
+                    .from('nutrition_data')
+                    .insert(nutritionDataArray);
+
+                if (nutritionErr) throw nutritionErr;
             }
+
+            // 💾 Clear auto-saved draft on successful save
+            localStorage.removeItem('foodlimit_grocery_draft');
 
             setSaved(true);
         } catch (err) {
@@ -500,13 +675,61 @@ export default function AddGroceriesPage() {
         f.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // Chemistry: NaCl = 40% Na + 60% Cl, so Salt = Sodium × 2.5
+    const SODIUM_TO_SALT_MULTIPLIER = 2.5;
+
+    // 🎯 SMART SHOPPING SCORE - Real-time score based on items
+    const computeShoppingScore = () => {
+        const validItems = items.filter(i => i.name.trim());
+        if (validItems.length === 0) return { score: 0, breakdown: [], tips: [] };
+
+        const categories = {};
+        validItems.forEach(i => { categories[i.category] = (categories[i.category] || 0) + 1; });
+        const uniqueCategories = Object.keys(categories).length;
+
+        // Diversity score (0-30): More categories = healthier
+        const diversityScore = Math.min(30, uniqueCategories * 5);
+
+        // Healthy ratio score (0-30): % of healthy categories
+        const healthyCats = ['Fruits', 'Vegetables', 'Protein', 'Legumes', 'Grains'];
+        const healthyCount = validItems.filter(i => healthyCats.includes(i.category)).length;
+        const healthyRatio = healthyCount / validItems.length;
+        const healthyScore = Math.round(healthyRatio * 30);
+
+        // Local match score (0-20): Items we recognize from nutritionDB
+        const localMatchCount = validItems.filter(i => lookupNutrition(i.name)).length;
+        const localScore = Math.round((localMatchCount / validItems.length) * 20);
+
+        // Volume score (0-20): Having enough items
+        const volumeScore = Math.min(20, validItems.length * 4);
+
+        const total = diversityScore + healthyScore + localScore + volumeScore;
+
+        const breakdown = [
+            { label: 'Variety', value: diversityScore, max: 30, color: 'var(--accent-blue)' },
+            { label: 'Healthy Picks', value: healthyScore, max: 30, color: 'var(--accent-green)' },
+            { label: 'Known Items', value: localScore, max: 20, color: 'var(--accent-purple)' },
+            { label: 'Cart Size', value: volumeScore, max: 20, color: 'var(--accent-orange)' },
+        ];
+
+        const tips = [];
+        if (diversityScore < 15) tips.push('Add items from more food categories');
+        if (healthyScore < 15) tips.push('Include more fruits, vegetables, or protein');
+        if (!categories['Fruits'] && !categories['Vegetables']) tips.push('Add fresh fruits or vegetables');
+        if (!categories['Protein']) tips.push('Consider adding a protein source');
+
+        return { score: total, breakdown, tips };
+    };
+
+    const shoppingScore = computeShoppingScore();
+
     const totalPrice = items.reduce((s, i) => s + (parseFloat(i.price) || 0), 0);
     const totalAnalyzedCalories = nutritionResults.reduce((s, r) => s + (r.nutrition?.calories || 0), 0);
     const totalProtein = nutritionResults.reduce((s, r) => s + (r.nutrition?.protein_g || 0), 0);
     const totalCarbs = nutritionResults.reduce((s, r) => s + (r.nutrition?.carbs_g || 0), 0);
     const totalFat = nutritionResults.reduce((s, r) => s + (r.nutrition?.fat_g || 0), 0);
     const totalSugar = nutritionResults.reduce((s, r) => s + (r.nutrition?.sugar_g || 0), 0);
-    const totalSalt = nutritionResults.reduce((s, r) => s + (r.nutrition?.salt_g || 0), 0);
+    const totalSalt = nutritionResults.reduce((s, r) => s + ((r.nutrition?.sodium_mg || 0) * SODIUM_TO_SALT_MULTIPLIER / 1000), 0);
 
     if (saved) {
         return (
@@ -536,6 +759,7 @@ export default function AddGroceriesPage() {
                         setSessionName('');
                         setStoreName('');
                         setNutritionResults([]);
+                        localStorage.removeItem('foodlimit_grocery_draft'); // Clear draft
                     }} className="btn-primary">
                         Add Another Session
                     </button>
@@ -831,16 +1055,77 @@ export default function AddGroceriesPage() {
                         </button>
                     </div>
 
-                    {/* Analyze Button */}
-                    <div className={styles.actionBar}>
-                        <button onClick={analyzeNutrition} className="btn-primary" disabled={analyzing} style={{ padding: '16px 32px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            {analyzing ? (
-                                <>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Loader size={18} className={styles.spinningIcon} /> AI Analyzing...
+                    {/* Smart Shopping Score */}
+                    {items.some(i => i.name.trim()) && (
+                        <div className={styles.shoppingScoreCard}>
+                            <div className={styles.scoreHeader}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <TrendingUp size={18} style={{ color: 'var(--accent-green)' }} />
+                                    <span className={styles.scoreTitle}>Smart Shopping Score</span>
+                                </div>
+                                <span className={styles.scoreTotal} style={{
+                                    color: shoppingScore.score >= 70 ? 'var(--accent-green)' :
+                                        shoppingScore.score >= 40 ? 'var(--accent-yellow)' : 'var(--accent-red)'
+                                }}>
+                                    {shoppingScore.score}/100
+                                </span>
+                            </div>
+                            <div className={styles.scoreBreakdown}>
+                                {shoppingScore.breakdown.map(b => (
+                                    <div key={b.label} className={styles.scoreBreakdownItem}>
+                                        <div className={styles.scoreBreakdownHeader}>
+                                            <span>{b.label}</span>
+                                            <span style={{ color: b.color }}>{b.value}/{b.max}</span>
+                                        </div>
+                                        <div className={styles.scoreBarBg}>
+                                            <div className={styles.scoreBarFill} style={{
+                                                width: `${(b.value / b.max) * 100}%`,
+                                                background: b.color,
+                                            }} />
+                                        </div>
                                     </div>
-                                    <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{analyzeStep}</span>
-                                </>
+                                ))}
+                            </div>
+                            {shoppingScore.tips.length > 0 && (
+                                <div className={styles.scoreTips}>
+                                    {shoppingScore.tips.map((tip, i) => (
+                                        <span key={i} className={styles.scoreTip}>{tip}</span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Analyze Button + Progress */}
+                    <div className={styles.actionBar}>
+                        {analyzing && (
+                            <div className={styles.analysisProgress}>
+                                <div className={styles.progressSteps}>
+                                    {[
+                                        { step: 1, label: 'Local DB' },
+                                        { step: 2, label: 'AI Analysis' },
+                                        { step: 3, label: 'Alternatives' },
+                                        { step: 4, label: 'Complete' },
+                                    ].map(({ step, label }) => (
+                                        <div key={step} className={`${styles.progressStep} ${analyzeStep >= step ? styles.progressStepActive : ''} ${analyzeStep === step ? styles.progressStepCurrent : ''}`}>
+                                            <div className={styles.progressStepDot}>
+                                                {analyzeStep > step ? <Check size={12} /> : step}
+                                            </div>
+                                            <span className={styles.progressStepLabel}>{label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className={styles.progressTrack}>
+                                    <div className={styles.progressTrackFill} style={{ width: `${((analyzeStep - 1) / 3) * 100}%` }} />
+                                </div>
+                                <p className={styles.progressText}>{analyzeStepText}</p>
+                            </div>
+                        )}
+                        <button onClick={analyzeNutrition} className="btn-primary" disabled={analyzing} style={{ padding: '16px 32px' }}>
+                            {analyzing ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Loader size={18} className={styles.spinningIcon} /> Analyzing...
+                                </div>
                             ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Brain size={18} /> Analyze with AI
@@ -933,7 +1218,7 @@ export default function AddGroceriesPage() {
                                             <span>{result.nutrition?.carbs_g || '—'}g</span>
                                             <span>{result.nutrition?.fat_g || '—'}g</span>
                                             <span>{result.nutrition?.sugar_g || '—'}g</span>
-                                            <span>{result.nutrition?.salt_g || '—'}g</span>
+                                            <span>{result.nutrition?.sodium_mg ? ((result.nutrition.sodium_mg * 2.5 / 1000).toFixed(1)) : '—'}g</span>
                                             <span className={styles.scoreCell}>
                                                 {result.nutrition?.health_score != null ? (
                                                     <span className={styles.scoreBadge} style={{

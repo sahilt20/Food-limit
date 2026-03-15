@@ -17,6 +17,9 @@ import {
     Download,
     ChefHat,
     Lightbulb,
+    CalendarDays,
+    Sun,
+    Moon,
 } from 'lucide-react';
 import styles from './layout.module.css';
 
@@ -25,6 +28,7 @@ const navItems = [
     { href: '/dashboard/add', label: 'Add Groceries', icon: PlusCircle },
     { href: '/dashboard/history', label: 'History', icon: History },
     { href: '/dashboard/recipes', label: 'AI Recipes', icon: ChefHat },
+    { href: '/dashboard/meal-planner', label: 'Meal Planner', icon: CalendarDays },
     { href: '/dashboard/recommendations', label: 'Recommendations', icon: Lightbulb },
     { href: '/dashboard/profile', label: 'Profile', icon: UserCircle },
 ];
@@ -33,6 +37,7 @@ export default function DashboardLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
+    const [theme, setTheme] = useState('dark');
     const pathname = usePathname();
     const router = useRouter();
     const supabase = createClient();
@@ -67,6 +72,20 @@ export default function DashboardLayout({ children }) {
         };
         getUser();
     }, []);
+
+    // Load theme preference
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('foodlimit_theme') || 'dark';
+        setTheme(savedTheme);
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }, []);
+
+    const toggleTheme = () => {
+        const newTheme = theme === 'dark' ? 'light' : 'dark';
+        setTheme(newTheme);
+        localStorage.setItem('foodlimit_theme', newTheme);
+        document.documentElement.setAttribute('data-theme', newTheme);
+    };
 
     const handleLogout = async () => {
         // Clear demo mode
@@ -155,6 +174,13 @@ export default function DashboardLayout({ children }) {
                         {navItems.find(i => i.href === pathname)?.label || 'FoodLimit'}
                     </div>
                     <div className={styles.topbarRight}>
+                        <button
+                            onClick={toggleTheme}
+                            className={styles.themeToggle}
+                            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                        >
+                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                        </button>
                         <div className={styles.topbarAvatar}>
                             {getInitials(profile?.full_name)}
                         </div>

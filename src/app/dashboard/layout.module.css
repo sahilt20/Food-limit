@@ -229,6 +229,30 @@
     gap: var(--space-md);
 }
 
+.themeToggle {
+    padding: var(--space-sm);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+.themeToggle:hover {
+    color: var(--accent-green);
+    background: var(--accent-green-dim);
+    border-color: var(--accent-green);
+    transform: scale(1.05);
+}
+
+.themeToggle:active {
+    transform: scale(0.95);
+}
+
 .topbarAvatar {
     width: 36px;
     height: 36px;

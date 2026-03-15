@@ -583,4 +583,10 @@
     .predictionGrid {
         grid-template-columns: 1fr 1fr;
     }
+
+    .insightsHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-sm);
+    }
 }

@@ -23,6 +23,9 @@ import {
     Clock,
     ShieldCheck,
     Trash2,
+    DollarSign,
+    Leaf,
+    Timer,
 } from 'lucide-react';
 import { Doughnut, Line, Bar } from 'react-chartjs-2';
 import {
@@ -69,6 +72,7 @@ export default function DashboardPage() {
     const [insightsPeriod, setInsightsPeriod] = useState('week');
     const [insightsError, setInsightsError] = useState('');
     const [aiProvider, setAiProvider] = useState('');
+    const [insightsLoaded, setInsightsLoaded] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
@@ -121,13 +125,13 @@ export default function DashboardPage() {
             setSessions([]);
             return;
         }
-        
+
         const now = new Date();
         const filtered = allSessions.filter(sess => {
             if (timeRange === 'all') return true;
             const sessDate = new Date(sess.session_date);
             const diffDays = (now - sessDate) / (1000 * 60 * 60 * 24);
-            
+
             if (timeRange === 'week') return diffDays <= 7;
             if (timeRange === 'month') return diffDays <= 30;
             if (timeRange === 'year') {
@@ -138,11 +142,40 @@ export default function DashboardPage() {
         setSessions(filtered);
     }, [allSessions, timeRange]);
 
-    const fetchAiInsights = async (period) => {
+    // Load cached AI insights from database
+    useEffect(() => {
+        const loadCachedInsights = async () => {
+            try {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const { data: cachedInsights } = await supabase
+                    .from('ai_insights_cache')
+                    .select('*')
+                    .eq('user_id', user.id);
+
+                if (cachedInsights && cachedInsights.length > 0) {
+                    const loadedInsights = { week: null, month: null, year: null };
+                    cachedInsights.forEach(cache => {
+                        loadedInsights[cache.period] = cache.insights;
+                        if (cache.provider) setAiProvider(cache.provider);
+                    });
+                    setAiInsights(loadedInsights);
+                    setInsightsLoaded(true);
+                }
+            } catch (error) {
+                console.error('Failed to load cached insights:', error);
+            }
+        };
+        loadCachedInsights();
+    }, []);
+
+    const fetchAiInsights = async (period, forceRefresh = false) => {
         setInsightsPeriod(period);
-        
-        // Don't refetch if we already have data for this period
-        if (aiInsights[period]) {
+
+        // Don't refetch if we already have data for this period (unless forcing refresh)
+        if (aiInsights[period] && !forceRefresh) {
             return;
         }
 
@@ -158,6 +191,25 @@ export default function DashboardPage() {
             if (data.data) {
                 setAiInsights(prev => ({ ...prev, [period]: data.data }));
                 setAiProvider(data.provider || '');
+
+                // Save to database for persistence
+                try {
+                    const supabase = createClient();
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        await supabase
+                            .from('ai_insights_cache')
+                            .upsert({
+                                user_id: user.id,
+                                period: period,
+                                insights: data.data,
+                                provider: data.provider || 'unknown',
+                            }, { onConflict: 'user_id,period' });
+                    }
+                } catch (dbError) {
+                    console.error('Failed to cache insights:', dbError);
+                }
+
                 if (data.warning) {
                     setInsightsError(`⚡ Using fallback data (${data.provider || 'local'}). Add an AI API key for richer insights.`);
                 }
@@ -169,6 +221,12 @@ export default function DashboardPage() {
         } finally {
             setInsightsLoading(false);
         }
+    };
+
+    const refreshInsights = async () => {
+        // Clear current insights for the selected period and refetch
+        setAiInsights(prev => ({ ...prev, [insightsPeriod]: null }));
+        await fetchAiInsights(insightsPeriod, true);
     };
 
     const totalSpent = sessions.reduce((s, sess) => s + (sess.total_spent || 0), 0);
@@ -226,7 +284,7 @@ export default function DashboardPage() {
                 aggregatedMacros.carbs += (nut.carbs_g || 0);
                 aggregatedMacros.fat += (nut.fat_g || 0);
                 aggregatedMacros.sugar += (nut.sugar_g || 0);
-                aggregatedMacros.salt += ((nut.sodium_mg || 0) / 1000); // approx to g
+                aggregatedMacros.salt += ((nut.sodium_mg || 0) * 2.5 / 1000); // NaCl = Na × 2.5
 
                 Object.keys(aggregatedMicroScores).forEach(key => {
                     if (nut[key]) {
@@ -377,11 +435,38 @@ export default function DashboardPage() {
 
     if (loading) {
         return (
-            <div className={styles.loadingContainer}>
-                <div className={styles.loadingPulse}>
-                    <Apple size={48} />
+            <div className={styles.dashboard}>
+                {/* Skeleton Welcome */}
+                <div className={styles.welcomeSection}>
+                    <div>
+                        <div className="skeleton" style={{ width: 220, height: 28, marginBottom: 8 }} />
+                        <div className="skeleton" style={{ width: 300, height: 16 }} />
+                    </div>
                 </div>
-                <p>Loading your nutrition data...</p>
+                {/* Skeleton Stats */}
+                <div className={styles.statGrid}>
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className={styles.statCard}>
+                            <div className="skeleton" style={{ width: 44, height: 44, borderRadius: 12 }} />
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div className="skeleton" style={{ width: 80, height: 12 }} />
+                                <div className="skeleton" style={{ width: 100, height: 24 }} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {/* Skeleton Charts */}
+                <div className={styles.chartsGrid}>
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className={styles.chartCard}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                                <div className="skeleton" style={{ width: 140, height: 18 }} />
+                                <div className="skeleton" style={{ width: 70, height: 22, borderRadius: 99 }} />
+                            </div>
+                            <div className="skeleton" style={{ width: '100%', height: 180 }} />
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
@@ -650,21 +735,240 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* Budget Predictions & Alerts */}
+            {sessions.length > 0 && (() => {
+                const spendByWeek = {};
+                sessions.forEach(sess => {
+                    const d = new Date(sess.session_date);
+                    const weekKey = `${d.getFullYear()}-W${Math.ceil(((d - new Date(d.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+                    spendByWeek[weekKey] = (spendByWeek[weekKey] || 0) + (sess.total_spent || 0);
+                });
+                const weeklySpends = Object.values(spendByWeek);
+                const avgWeekly = weeklySpends.length ? weeklySpends.reduce((a, b) => a + b, 0) / weeklySpends.length : 0;
+                const projectedMonthly = avgWeekly * 4.33;
+                const lastWeekSpend = weeklySpends[weeklySpends.length - 1] || 0;
+                const trend = avgWeekly > 0 ? ((lastWeekSpend - avgWeekly) / avgWeekly * 100).toFixed(0) : 0;
+                const costPerCalorie = totalCalories > 0 ? (totalSpent / totalCalories).toFixed(3) : 0;
+                const costPerItem = totalItems > 0 ? (totalSpent / totalItems).toFixed(2) : 0;
+
+                return (
+                    <div className={`${styles.chartCard} animate-fadeInUp stagger-5`} style={{ marginBottom: 'var(--space-xl)' }}>
+                        <div className={styles.chartHeader}>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <DollarSign size={20} style={{ color: 'var(--accent-yellow)' }} /> Budget Predictions
+                            </h3>
+                            <span className={styles.chartBadge}>Auto-calculated</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-md)' }}>
+                            <div style={{ padding: 'var(--space-md)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--accent-green)' }}>{formatCurrency(avgWeekly, currency)}</div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Avg Weekly</div>
+                            </div>
+                            <div style={{ padding: 'var(--space-md)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--accent-blue)' }}>{formatCurrency(projectedMonthly, currency)}</div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Projected Monthly</div>
+                            </div>
+                            <div style={{ padding: 'var(--space-md)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: Number(trend) > 0 ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+                                    {Number(trend) > 0 ? '+' : ''}{trend}%
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>vs Average</div>
+                            </div>
+                            <div style={{ padding: 'var(--space-md)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--accent-purple)' }}>{formatCurrency(Number(costPerItem), currency)}</div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Avg per Item</div>
+                            </div>
+                        </div>
+                        {Number(trend) > 20 && (
+                            <div style={{ marginTop: 'var(--space-md)', padding: '10px 14px', background: 'var(--accent-red-dim)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', color: 'var(--accent-red)' }}>
+                                <AlertTriangle size={16} /> Spending is {trend}% above your average. Consider reviewing your cart.
+                            </div>
+                        )}
+                        <div style={{ marginTop: 'var(--space-sm)', fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
+                            Cost efficiency: {formatCurrency(Number(costPerCalorie), currency)}/calorie
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* Carbon Footprint Estimate + Expiry Alerts */}
+            <div className={styles.chartsGrid} style={{ marginBottom: 'var(--space-xl)' }}>
+                {/* Carbon Footprint */}
+                <div className={`${styles.chartCard} animate-fadeInUp stagger-5`}>
+                    <div className={styles.chartHeader}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Leaf size={18} style={{ color: 'var(--accent-green)' }} /> Carbon Footprint
+                        </h3>
+                        <span className={styles.chartBadge}>Estimate</span>
+                    </div>
+                    {(() => {
+                        const carbonFactors = {
+                            'Protein': 7.0, 'Dairy': 3.5, 'Grains': 1.2, 'Vegetables': 0.5,
+                            'Fruits': 0.6, 'Legumes': 0.8, 'Oils': 2.0, 'Snacks': 2.5,
+                            'Beverages': 1.0, 'Spices': 0.3, 'Other': 1.5,
+                        };
+                        const categoryWeights = {};
+                        let totalCarbon = 0;
+
+                        sessions.forEach(sess => {
+                            (sess.grocery_items || []).forEach(item => {
+                                const cat = item.category || 'Other';
+                                const qty = item.quantity || 1;
+                                const factor = carbonFactors[cat] || 1.5;
+                                const co2 = qty * factor * 0.1;
+                                totalCarbon += co2;
+                                categoryWeights[cat] = (categoryWeights[cat] || 0) + co2;
+                            });
+                        });
+
+                        const sortedCats = Object.entries(categoryWeights).sort((a, b) => b[1] - a[1]);
+                        const maxCarbon = sortedCats.length ? sortedCats[0][1] : 1;
+                        const ecoScore = Math.max(0, Math.min(100, Math.round(100 - (totalCarbon * 2))));
+
+                        return (
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+                                    <div>
+                                        <div style={{ fontSize: '1.8rem', fontWeight: 800, color: ecoScore >= 60 ? 'var(--accent-green)' : ecoScore >= 30 ? 'var(--accent-yellow)' : 'var(--accent-red)' }}>
+                                            {totalCarbon.toFixed(1)} kg
+                                        </div>
+                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>Est. CO2 emissions</div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: ecoScore >= 60 ? 'var(--accent-green)' : ecoScore >= 30 ? 'var(--accent-yellow)' : 'var(--accent-red)' }}>
+                                            {ecoScore}/100
+                                        </div>
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>Eco Score</div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    {sortedCats.slice(0, 5).map(([cat, val]) => (
+                                        <div key={cat}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: 3 }}>
+                                                <span style={{ color: 'var(--text-secondary)' }}>{cat}</span>
+                                                <span style={{ color: 'var(--text-tertiary)' }}>{val.toFixed(1)} kg</span>
+                                            </div>
+                                            <div style={{ height: 4, background: 'var(--bg-glass)', borderRadius: 99, overflow: 'hidden' }}>
+                                                <div style={{ height: '100%', width: `${(val / maxCarbon) * 100}%`, background: val / maxCarbon > 0.7 ? 'var(--accent-red)' : 'var(--accent-green)', borderRadius: 99, transition: 'width 1s ease' }} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {totalCarbon > 0 && (
+                                    <p style={{ marginTop: 'var(--space-sm)', fontSize: '0.78rem', color: 'var(--accent-green)' }}>
+                                        💡 Tip: Replace some meat with legumes to reduce your carbon footprint by up to 40%.
+                                    </p>
+                                )}
+                            </div>
+                        );
+                    })()}
+                </div>
+
+                {/* Expiry Alerts */}
+                <div className={`${styles.chartCard} animate-fadeInUp stagger-6`}>
+                    <div className={styles.chartHeader}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Timer size={18} style={{ color: 'var(--accent-orange)' }} /> Expiry Tracker
+                        </h3>
+                        <span className={styles.chartBadge}>Estimated</span>
+                    </div>
+                    {(() => {
+                        const shelfLife = {
+                            'Fruits': 5, 'Vegetables': 7, 'Dairy': 10, 'Protein': 3,
+                            'Grains': 90, 'Legumes': 180, 'Oils': 365, 'Snacks': 60,
+                            'Beverages': 30, 'Spices': 365, 'Other': 14,
+                        };
+
+                        const recentItems = [];
+                        const now = new Date();
+                        sessions.slice(0, 3).forEach(sess => {
+                            const purchaseDate = new Date(sess.session_date);
+                            (sess.grocery_items || []).forEach(item => {
+                                const cat = item.category || 'Other';
+                                const daysLeft = shelfLife[cat] || 14;
+                                const expiryDate = new Date(purchaseDate.getTime() + daysLeft * 86400000);
+                                const remaining = Math.ceil((expiryDate - now) / 86400000);
+                                recentItems.push({ name: item.name, category: cat, remaining, daysLeft });
+                            });
+                        });
+
+                        const sorted = recentItems.sort((a, b) => a.remaining - b.remaining);
+                        const expiringSoon = sorted.filter(i => i.remaining <= 3 && i.remaining >= 0);
+                        const expired = sorted.filter(i => i.remaining < 0);
+                        const safe = sorted.filter(i => i.remaining > 3);
+
+                        return (
+                            <div>
+                                <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+                                    <div style={{ flex: 1, padding: 10, background: 'var(--accent-red-dim)', borderRadius: 8, textAlign: 'center' }}>
+                                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--accent-red)' }}>{expired.length}</div>
+                                        <div style={{ fontSize: '0.68rem', color: 'var(--accent-red)' }}>Likely Expired</div>
+                                    </div>
+                                    <div style={{ flex: 1, padding: 10, background: 'var(--accent-orange-dim)', borderRadius: 8, textAlign: 'center' }}>
+                                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--accent-orange)' }}>{expiringSoon.length}</div>
+                                        <div style={{ fontSize: '0.68rem', color: 'var(--accent-orange)' }}>Use Soon</div>
+                                    </div>
+                                    <div style={{ flex: 1, padding: 10, background: 'var(--accent-green-dim)', borderRadius: 8, textAlign: 'center' }}>
+                                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--accent-green)' }}>{safe.length}</div>
+                                        <div style={{ fontSize: '0.68rem', color: 'var(--accent-green)' }}>Fresh</div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
+                                    {sorted.slice(0, 10).map((item, i) => (
+                                        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-glass)', borderRadius: 8, borderLeft: `3px solid ${item.remaining < 0 ? 'var(--accent-red)' : item.remaining <= 3 ? 'var(--accent-orange)' : 'var(--accent-green)'}` }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>{item.name}</div>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>{item.category}</div>
+                                            </div>
+                                            <span style={{
+                                                fontSize: '0.75rem', fontWeight: 600, padding: '3px 8px', borderRadius: 99,
+                                                background: item.remaining < 0 ? 'var(--accent-red-dim)' : item.remaining <= 3 ? 'var(--accent-orange-dim)' : 'var(--accent-green-dim)',
+                                                color: item.remaining < 0 ? 'var(--accent-red)' : item.remaining <= 3 ? 'var(--accent-orange)' : 'var(--accent-green)',
+                                            }}>
+                                                {item.remaining < 0 ? `${Math.abs(item.remaining)}d ago` : item.remaining === 0 ? 'Today' : `${item.remaining}d left`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                    {sorted.length === 0 && (
+                                        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', textAlign: 'center', padding: 'var(--space-lg)' }}>No recent items to track</p>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
+                </div>
+            </div>
+
             {/* AI Insights Section */}
             <div className={`${styles.aiInsightsSection} animate-fadeInUp stagger-5`}>
                 <div className={styles.insightsHeader}>
                     <h3><Brain size={20} /> AI Insights & Predictions</h3>
-                    <div className={styles.insightsTabs}>
-                        {['week', 'month', 'year'].map(period => (
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <div className={styles.insightsTabs}>
+                            {['week', 'month', 'year'].map(period => (
+                                <button
+                                    key={period}
+                                    className={`${styles.insightTab} ${insightsPeriod === period ? styles.insightTabActive : ''}`}
+                                    onClick={() => fetchAiInsights(period)}
+                                    disabled={insightsLoading}
+                                >
+                                    {period.charAt(0).toUpperCase() + period.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                        {aiInsights[insightsPeriod] && (
                             <button
-                                key={period}
-                                className={`${styles.insightTab} ${insightsPeriod === period ? styles.insightTabActive : ''}`}
-                                onClick={() => fetchAiInsights(period)}
+                                onClick={refreshInsights}
                                 disabled={insightsLoading}
+                                className="btn-secondary"
+                                style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                title="Refresh insights for current period"
                             >
-                                {period.charAt(0).toUpperCase() + period.slice(1)}
+                                <TrendingUp size={14} />
+                                Refresh
                             </button>
-                        ))}
+                        )}
                     </div>
                 </div>
 
