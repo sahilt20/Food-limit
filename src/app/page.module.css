@@ -62,7 +62,7 @@
 
 .ctas {
   display: flex;
-  flex-direction: row;
+  flex-direction: column; /* Changed to column for mob */
   width: 100%;
   max-width: 440px;
   gap: 16px;
@@ -73,13 +73,13 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 40px;
+  height: 44px;
   padding: 0 16px;
   border-radius: 128px;
   border: 1px solid transparent;
   transition: 0.2s;
   cursor: pointer;
-  width: fit-content;
+  width: 100%;
   font-weight: 500;
 }
 

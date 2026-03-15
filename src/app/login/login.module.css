@@ -199,8 +199,12 @@
 }
 
 @media (max-width: 480px) {
+    .container {
+        padding: var(--space-md);
+    }
+
     .card {
-        padding: var(--space-lg);
+        padding: var(--space-lg) var(--space-md);
     }
 
     .title {

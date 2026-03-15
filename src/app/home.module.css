@@ -410,10 +410,27 @@
 
     .nav {
         padding: var(--space-md);
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .navLinks {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
     }
 
     .hero {
         padding: var(--space-xl) var(--space-md);
+    }
+    
+    .heroCTA {
+        flex-direction: column;
+    }
+    
+    .heroCTA > * {
+        width: 100%;
+        justify-content: center;
     }
 
     .footerContent {
