@@ -77,6 +77,13 @@ export default function DashboardLayout({ children }) {
         window.location.href = '/login';
     };
 
+    const getInitials = (name) => {
+        if (!name) return 'U';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    };
+
     return (
         <div className={styles.dashboardContainer}>
             {/* Mobile overlay */}
@@ -124,7 +131,7 @@ export default function DashboardLayout({ children }) {
                     </a>
                     <div className={styles.userInfo}>
                         <div className={styles.userAvatar}>
-                            {(profile?.full_name || 'U').charAt(0).toUpperCase()}
+                            {getInitials(profile?.full_name)}
                         </div>
                         <div className={styles.userDetails}>
                             <span className={styles.userName}>{profile?.full_name || 'User'}</span>
@@ -149,7 +156,7 @@ export default function DashboardLayout({ children }) {
                     </div>
                     <div className={styles.topbarRight}>
                         <div className={styles.topbarAvatar}>
-                            {(profile?.full_name || 'U').charAt(0).toUpperCase()}
+                            {getInitials(profile?.full_name)}
                         </div>
                     </div>
                 </header>

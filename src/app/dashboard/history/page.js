@@ -11,6 +11,7 @@ import {
     Filter,
     ChevronRight,
     Package,
+    Trash2,
 } from 'lucide-react';
 import styles from './history.module.css';
 
@@ -51,6 +52,29 @@ export default function HistoryPage() {
         };
         loadSessions();
     }, []);
+
+    const handleDeleteSession = async (id) => {
+        if (!window.confirm("Are you sure you want to permanently delete this shopping trip?")) return;
+
+        const isDemo = localStorage.getItem('foodlimit_demo');
+        if (isDemo) {
+            setSessions(sessions.filter(s => s.id !== id));
+            return;
+        }
+
+        const supabase = createClient();
+        const { error } = await supabase
+            .from('grocery_sessions')
+            .delete()
+            .eq('id', id);
+
+        if (!error) {
+            setSessions(sessions.filter(s => s.id !== id));
+        } else {
+            console.error("Error deleting session:", error);
+            alert("Failed to delete session.");
+        }
+    };
 
     const filtered = sessions.filter(s =>
         s.session_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -160,7 +184,13 @@ export default function HistoryPage() {
                                         {session.store_name && <span>📍 {session.store_name}</span>}
                                     </div>
                                 </div>
-                                <ChevronRight size={18} className={styles.chevron} />
+                                <button 
+                                    onClick={() => handleDeleteSession(session.id)}
+                                    className={styles.deleteBtn}
+                                    title="Delete Session"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
                             </div>
                             <div className={styles.timelineStats}>
                                 <div className={styles.sessionStatItem}>

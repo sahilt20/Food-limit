@@ -228,6 +228,27 @@
     font-size: 0.9rem;
 }
 
+.deleteBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-tertiary);
+    border: 1px solid transparent;
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+.deleteBtn:hover {
+    color: var(--accent-red);
+    background: var(--accent-red-dim);
+    border-color: rgba(239, 68, 68, 0.2);
+    transform: scale(1.05);
+}
+
 /* ========== Responsive ========== */
 @media (max-width: 768px) {
     .summaryGrid {
