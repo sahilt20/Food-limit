@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import { NUTRIENT_INFO, DAILY_VALUES } from '@/lib/nutritionDB';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 import Link from 'next/link';
 import {
     TrendingUp,
@@ -50,28 +51,20 @@ ChartJS.register(
     Filler
 );
 
-// Demo data for when no real data exists
-const DEMO_SESSIONS = [
-    { id: '1', session_name: 'Weekly Groceries', session_date: '2026-02-09', store_name: 'Whole Foods', total_spent: 85.40, total_calories: 12500, total_items: 15 },
-    { id: '2', session_name: 'Quick Stop', session_date: '2026-02-07', store_name: 'Trader Joe\'s', total_spent: 32.10, total_calories: 5800, total_items: 8 },
-    { id: '3', session_name: 'Monthly Stock', session_date: '2026-02-03', store_name: 'Costco', total_spent: 156.80, total_calories: 28400, total_items: 24 },
-    { id: '4', session_name: 'Fruit Run', session_date: '2026-01-30', store_name: 'Farmers Market', total_spent: 28.50, total_calories: 3200, total_items: 10 },
-    { id: '5', session_name: 'Dinner Party', session_date: '2026-01-25', store_name: 'Whole Foods', total_spent: 72.30, total_calories: 9800, total_items: 12 },
-];
-
-const DEMO_WEEKLY_CALORIES = [2100, 1850, 2300, 1950, 2200, 2400, 2150];
-const DEMO_MACROS = { protein: 340, carbs: 820, fat: 290, sugar: 165, salt: 12 };
-const DEMO_SPENDING = { Produce: 45, Protein: 62, Dairy: 28, Grains: 18, Snacks: 12 };
-const DEMO_MICRO_SCORES = {
-    vitamin_c_mg: 82, calcium_mg: 65, iron_mg: 71, potassium_mg: 58,
-    vitamin_a_mcg: 90, vitamin_d_mcg: 35, zinc_mg: 73, magnesium_mg: 61,
-};
+// Removed obsolete DEMO constants as data is now live from Supabase.
 
 export default function DashboardPage() {
     const [sessions, setSessions] = useState([]);
+    const [allSessions, setAllSessions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isDemo, setIsDemo] = useState(false);
-    const [aiInsights, setAiInsights] = useState(null);
+    const [timeRange, setTimeRange] = useState('month'); // week, month, year, all
+
+    const [householdCalorieTarget, setHouseholdCalorieTarget] = useState(2000);
+    const [familySize, setFamilySize] = useState(1);
+    const [currency, setCurrency] = useState('USD');
+
+    const [aiInsights, setAiInsights] = useState({ week: null, month: null, year: null });
     const [insightsLoading, setInsightsLoading] = useState(false);
     const [insightsPeriod, setInsightsPeriod] = useState('week');
     const [insightsError, setInsightsError] = useState('');
@@ -85,44 +78,85 @@ export default function DashboardPage() {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
                     localStorage.removeItem('foodlimit_demo');
-                    const { data } = await supabase
-                        .from('grocery_sessions')
-                        .select('*')
-                        .order('session_date', { ascending: false })
-                        .limit(10);
-                    setSessions(data?.length ? data : DEMO_SESSIONS);
-                    setIsDemo(!data?.length);
+                    
+                    const [{ data: profData }, { data: famData }, { data: sessionData }] = await Promise.all([
+                        supabase.from('profiles').select('daily_calorie_goal, currency_preference').eq('id', user.id).single(),
+                        supabase.from('family_members').select('daily_calorie_goal').eq('user_id', user.id),
+                        supabase.from('grocery_sessions')
+                            .select('*, grocery_items(*, nutrition_data(*))')
+                            .order('session_date', { ascending: false })
+                    ]);
+
+                    let totalGoal = profData?.daily_calorie_goal || 2000;
+                    setCurrency(profData?.currency_preference || 'USD');
+                    let fSize = 1;
+                    if (famData && famData.length > 0) {
+                        famData.forEach(m => totalGoal += parseInt(m.daily_calorie_goal || 0));
+                        fSize += famData.length;
+                    }
+                    setHouseholdCalorieTarget(totalGoal);
+                    setFamilySize(fSize);
+                    
+                    if (sessionData?.length) {
+                        setAllSessions(sessionData);
+                    } else {
+                        setAllSessions([]);
+                        setIsDemo(true);
+                        setSessions([]); // Show empty states gracefully
+                    }
                     setLoading(false);
                     return;
                 }
             } catch {
                 // Auth failed
             }
-
-            // Fall back to demo
-            const demo = localStorage.getItem('foodlimit_demo');
-            if (demo) {
-                setIsDemo(true);
-                setSessions(DEMO_SESSIONS);
-            }
             setLoading(false);
         };
         loadData();
     }, []);
 
+    // Filter sessions by time range whenever allSessions or timeRange changes
+    useEffect(() => {
+        if (!allSessions.length) {
+            setSessions([]);
+            return;
+        }
+        
+        const now = new Date();
+        const filtered = allSessions.filter(sess => {
+            if (timeRange === 'all') return true;
+            const sessDate = new Date(sess.session_date);
+            const diffDays = (now - sessDate) / (1000 * 60 * 60 * 24);
+            
+            if (timeRange === 'week') return diffDays <= 7;
+            if (timeRange === 'month') return diffDays <= 30;
+            if (timeRange === 'year') {
+                return sessDate.getFullYear() === now.getFullYear(); // YTD
+            }
+            return true;
+        });
+        setSessions(filtered);
+    }, [allSessions, timeRange]);
+
     const fetchAiInsights = async (period) => {
-        setInsightsLoading(true);
         setInsightsPeriod(period);
+        
+        // Don't refetch if we already have data for this period
+        if (aiInsights[period]) {
+            return;
+        }
+
+        setInsightsLoading(true);
         setInsightsError('');
         try {
             const response = await fetch('/api/ai-analytics', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessions, period }),
+                body: JSON.stringify({ sessions, period, household_calorie_target: householdCalorieTarget, family_size: familySize }),
             });
             const data = await response.json();
             if (data.data) {
-                setAiInsights(data.data);
+                setAiInsights(prev => ({ ...prev, [period]: data.data }));
                 setAiProvider(data.provider || '');
                 if (data.warning) {
                     setInsightsError(`⚡ Using fallback data (${data.provider || 'local'}). Add an AI API key for richer insights.`);
@@ -142,11 +176,107 @@ export default function DashboardPage() {
     const totalItems = sessions.reduce((s, sess) => s + (sess.total_items || 0), 0);
     const avgCalPerSession = sessions.length ? Math.round(totalCalories / sessions.length) : 0;
 
+    // Aggregations
+    const aggregatedMacros = { protein: 0, carbs: 0, fat: 0, sugar: 0, salt: 0 };
+    const aggregatedSpending = {};
+    const storeAnalytics = {};
+    const foodAnalytics = {};
+    
+    const aggregatedMicroScores = {
+        vitamin_c_mg: 0, calcium_mg: 0, iron_mg: 0, potassium_mg: 0,
+        vitamin_a_mcg: 0, vitamin_d_mcg: 0, zinc_mg: 0, magnesium_mg: 0,
+    };
+    
+    // Group calories by day for trend (last 7 days regardless of filter, or align with filter if possible. We'll stick to a simple 7-point array for demo structure).
+    const weeklyCals = new Array(7).fill(0);
+
+    sessions.forEach(sess => {
+        // Simple day binning for the last 7 days chart
+        const sessDate = new Date(sess.session_date);
+        const dayDiff = Math.floor((new Date() - sessDate) / (1000 * 60 * 60 * 24));
+        if (dayDiff >= 0 && dayDiff < 7) {
+            weeklyCals[6 - dayDiff] += (sess.total_calories || 0);
+        }
+
+        const store = sess.store_name || 'Unknown Store';
+        if (!storeAnalytics[store]) {
+            storeAnalytics[store] = { spent: 0, trips: 0, categories: {} };
+        }
+        storeAnalytics[store].spent += (sess.total_spent || 0);
+        storeAnalytics[store].trips += 1;
+
+        (sess.grocery_items || []).forEach(item => {
+            // Spending
+            const cat = item.category || 'Other';
+            aggregatedSpending[cat] = (aggregatedSpending[cat] || 0) + (item.price || 0);
+            storeAnalytics[store].categories[cat] = (storeAnalytics[store].categories[cat] || 0) + 1;
+
+            // Food Analytics
+            const foodName = item.name || 'Unknown Item';
+            if (!foodAnalytics[foodName]) {
+                foodAnalytics[foodName] = { spent: 0, count: 0, category: cat };
+            }
+            foodAnalytics[foodName].spent += (item.price || 0);
+            foodAnalytics[foodName].count += 1;
+
+            // Nutrition
+            const nut = (item.nutrition_data && item.nutrition_data.length > 0) ? item.nutrition_data[0] : null;
+            if (nut) {
+                aggregatedMacros.protein += (nut.protein_g || 0);
+                aggregatedMacros.carbs += (nut.carbs_g || 0);
+                aggregatedMacros.fat += (nut.fat_g || 0);
+                aggregatedMacros.sugar += (nut.sugar_g || 0);
+                aggregatedMacros.salt += ((nut.sodium_mg || 0) / 1000); // approx to g
+
+                Object.keys(aggregatedMicroScores).forEach(key => {
+                    if (nut[key]) {
+                        // Calculate % roughly based on DAILY_VALUES if exists, but since we are summing over multiple days, we just sum raw values for now and normalize below.
+                        aggregatedMicroScores[key] += (nut[key] || 0);
+                    }
+                });
+            }
+        });
+    });
+
+    // Normalize scores and macros to get Daily Average
+    const daysInPeriod = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : timeRange === 'year' ? 365 : Math.max(1, sessions.length * 3);
+    
+    // Normalize macros
+    Object.keys(aggregatedMacros).forEach(key => {
+        aggregatedMacros[key] = (aggregatedMacros[key] / daysInPeriod) || 0;
+    });
+
+    Object.keys(aggregatedMicroScores).forEach(key => {
+        const dv = DAILY_VALUES?.[key] || 1000; // fallback DV
+        const avgDailyIntake = aggregatedMicroScores[key] / daysInPeriod;
+        aggregatedMicroScores[key] = Math.min(100, Math.round((avgDailyIntake / dv) * 100)) || 0;
+    });
+
+    // Formatting Store Array
+    const sortedStores = Object.entries(storeAnalytics)
+        .map(([name, data]) => {
+            const topCategory = Object.keys(data.categories).reduce((a, b) => data.categories[a] > data.categories[b] ? a : b, '');
+            return { name, ...data, topCategory };
+        })
+        .sort((a, b) => b.spent - a.spent);
+
+    // Formatting Food Array
+    const sortedFoods = Object.entries(foodAnalytics)
+        .map(([name, data]) => ({ name, ...data }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10); // Display top 10 most frequent foods
+
     // Chart configurations
     const macroData = {
         labels: ['Protein', 'Carbs', 'Fat', 'Sugar', 'Salt'],
         datasets: [{
-            data: [DEMO_MACROS.protein, DEMO_MACROS.carbs, DEMO_MACROS.fat, DEMO_MACROS.sugar, DEMO_MACROS.salt * 10],
+            data: [
+                Math.round(aggregatedMacros.protein), 
+                Math.round(aggregatedMacros.carbs), 
+                Math.round(aggregatedMacros.fat), 
+                Math.round(aggregatedMacros.sugar), 
+                Math.round(aggregatedMacros.salt * 10) // *10 just for visual balance on radar/doughnut
+            ],
             backgroundColor: ['#4d8dff', '#fbbf24', '#ff6b9d', '#f472b6', '#fb923c'],
             borderColor: ['rgba(77,141,255,0.3)', 'rgba(251,191,36,0.3)', 'rgba(255,107,157,0.3)', 'rgba(244,114,182,0.3)', 'rgba(251,146,60,0.3)'],
             borderWidth: 2,
@@ -155,10 +285,10 @@ export default function DashboardPage() {
     };
 
     const calorieTrendData = {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7 (Today)'],
         datasets: [{
             label: 'Calories',
-            data: DEMO_WEEKLY_CALORIES,
+            data: weeklyCals,
             fill: true,
             backgroundColor: 'rgba(0, 212, 170, 0.1)',
             borderColor: '#00d4aa',
@@ -173,10 +303,10 @@ export default function DashboardPage() {
     };
 
     const spendingData = {
-        labels: Object.keys(DEMO_SPENDING),
+        labels: Object.keys(aggregatedSpending).length ? Object.keys(aggregatedSpending) : ['No Data'],
         datasets: [{
-            label: 'Spending ($)',
-            data: Object.values(DEMO_SPENDING),
+            label: `Spending (${getCurrencySymbol(currency)})`,
+            data: Object.keys(aggregatedSpending).length ? Object.values(aggregatedSpending) : [0],
             backgroundColor: [
                 'rgba(0, 212, 170, 0.7)',
                 'rgba(77, 141, 255, 0.7)',
@@ -263,14 +393,36 @@ export default function DashboardPage() {
                 <div>
                     <h1 className={styles.welcomeTitle}>Nutrition Overview</h1>
                     <p className={styles.welcomeSubtitle}>
-                        {isDemo ? 'Demo Mode — Connect Supabase for your real data' : 'Your food shopping intelligence at a glance'}
+                        Your food shopping intelligence at a glance
                     </p>
                 </div>
-                <Link href="/dashboard/add" className="btn-primary">
-                    <PlusCircle size={18} />
-                    Add Groceries
-                </Link>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <select 
+                        className="input-field" 
+                        style={{ width: 'auto', padding: '8px 16px', borderRadius: '99px', background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}
+                        value={timeRange}
+                        onChange={(e) => setTimeRange(e.target.value)}
+                    >
+                        <option value="week">Past Week</option>
+                        <option value="month">Past Month</option>
+                        <option value="year">Year to Date (YTD)</option>
+                        <option value="all">All Time</option>
+                    </select>
+                    <Link href="/dashboard/add" className="btn-primary">
+                        <PlusCircle size={18} />
+                        Add Groceries
+                    </Link>
+                </div>
             </div>
+
+            {/* Empty State */}
+            {!loading && allSessions.length === 0 && (
+                <div className={styles.emptyState} style={{ gridColumn: '1 / -1', margin: '40px 0', border: '1px dashed var(--border-color)', background: 'transparent' }}>
+                    <Droplets size={48} className={styles.emptyIcon} />
+                    <h4>No shopping trips yet</h4>
+                    <p>Add your first grocery session to start tracking!</p>
+                </div>
+            )}
 
             {/* Stat Cards */}
             <div className={styles.statGrid}>
@@ -280,7 +432,7 @@ export default function DashboardPage() {
                     </div>
                     <div className={styles.statInfo}>
                         <span className={styles.statLabel}>Total Spent</span>
-                        <span className={styles.statValue}>${totalSpent.toFixed(2)}</span>
+                        <span className={styles.statValue}>{formatCurrency(totalSpent, currency)}</span>
                     </div>
                     <div className={styles.statTrend} style={{ color: 'var(--accent-green)' }}>
                         <ArrowUpRight size={14} />
@@ -355,11 +507,11 @@ export default function DashboardPage() {
                         </div>
                         <div className={styles.macroBreakdown}>
                             {[
-                                { label: 'Protein', value: DEMO_MACROS.protein, max: 300, color: '#4d8dff', unit: 'g' },
-                                { label: 'Carbs', value: DEMO_MACROS.carbs, max: 1200, color: '#fbbf24', unit: 'g' },
-                                { label: 'Fat', value: DEMO_MACROS.fat, max: 400, color: '#ff6b9d', unit: 'g' },
-                                { label: 'Sugar', value: DEMO_MACROS.sugar, max: 200, color: '#f472b6', unit: 'g' },
-                                { label: 'Salt', value: DEMO_MACROS.salt, max: 6, color: '#fb923c', unit: 'g' },
+                                { label: 'Protein', value: Math.round(aggregatedMacros.protein), max: 150, color: '#4d8dff', unit: 'g' },
+                                { label: 'Carbs', value: Math.round(aggregatedMacros.carbs), max: 300, color: '#fbbf24', unit: 'g' },
+                                { label: 'Fat', value: Math.round(aggregatedMacros.fat), max: 70, color: '#ff6b9d', unit: 'g' },
+                                { label: 'Sugar', value: Math.round(aggregatedMacros.sugar), max: 50, color: '#f472b6', unit: 'g' },
+                                { label: 'Salt', value: Math.round(aggregatedMacros.salt), max: 6, color: '#fb923c', unit: 'g' },
                             ].map(macro => (
                                 <div key={macro.label} className={styles.macroStatRow}>
                                     <div className={styles.macroStatHeader}>
@@ -370,7 +522,7 @@ export default function DashboardPage() {
                                     </div>
                                     <div className={styles.macroBarBg}>
                                         <div className={styles.macroBarFill} style={{
-                                            width: `${Math.min((macro.value / macro.max) * 100, 100)}%`,
+                                            width: `${Math.min((macro.value / (macro.max || 1)) * 100, 100)}%`,
                                             background: macro.color,
                                         }} />
                                     </div>
@@ -398,10 +550,15 @@ export default function DashboardPage() {
                         <span className={styles.chartBadge}>% Daily Value</span>
                     </div>
                     <div className={styles.microGrid}>
-                        {Object.entries(DEMO_MICRO_SCORES).map(([key, value]) => (
+                        {Object.entries(aggregatedMicroScores).map(([key, value]) => (
                             <div key={key} className={styles.microItem}>
                                 <div className={styles.microInfo}>
-                                    <span className={styles.microName}>{NUTRIENT_INFO[key]?.name || key}</span>
+                                    <span className={styles.microName}>
+                                        {key === 'vitamin_c_mg' ? 'Vitamin C' :
+                                         key === 'vitamin_a_mcg' ? 'Vitamin A' :
+                                         key === 'vitamin_d_mcg' ? 'Vitamin D' :
+                                         NUTRIENT_INFO[key]?.name || key.replace('_mg', '').replace('_mcg', '').replace(/_/g, ' ')}
+                                    </span>
                                     <span className={styles.microValue}>{value}%</span>
                                 </div>
                                 <div className={styles.microBarBg}>
@@ -416,6 +573,80 @@ export default function DashboardPage() {
                             </div>
                         ))}
                     </div>
+                </div>
+            </div>
+
+            {/* Deep Dive Analysis Grid (Store & Food) */}
+            <div className={styles.chartsGrid} style={{ marginTop: 'var(--space-xl)' }}>
+                {/* Store Analytics */}
+                <div className={`${styles.chartCard} animate-fadeInUp stagger-5`} style={{ overflowX: 'auto' }}>
+                    <div className={styles.chartHeader} style={{ marginBottom: 'var(--space-md)' }}>
+                        <h3>🏬 Store Analytics</h3>
+                        <span className={styles.chartBadge}>By Spend</span>
+                    </div>
+                    {sortedStores.length > 0 ? (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+                                    <th style={{ padding: '12px 0', fontWeight: '500' }}>Store</th>
+                                    <th style={{ padding: '12px 0', fontWeight: '500' }}>Trips</th>
+                                    <th style={{ padding: '12px 0', fontWeight: '500' }}>Top Category</th>
+                                    <th style={{ padding: '12px 0', fontWeight: '500', textAlign: 'right' }}>Total Spent</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedStores.map(store => (
+                                    <tr key={store.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                        <td style={{ padding: '12px 0', fontWeight: '600', color: 'var(--text-primary)' }}>{store.name}</td>
+                                        <td style={{ padding: '12px 0', color: 'var(--text-secondary)' }}>{store.trips}</td>
+                                        <td style={{ padding: '12px 0' }}>
+                                            <span style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', background: 'var(--bg-card-hover)', color: 'var(--text-secondary)' }}>
+                                                {store.topCategory}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--accent-green)', fontWeight: '600' }}>{formatCurrency(store.spent, currency)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', padding: 'var(--space-lg) 0' }}>No store data available</p>
+                    )}
+                </div>
+
+                {/* Food Analytics */}
+                <div className={`${styles.chartCard} animate-fadeInUp stagger-6`} style={{ overflowX: 'auto' }}>
+                    <div className={styles.chartHeader} style={{ marginBottom: 'var(--space-md)' }}>
+                        <h3>🍎 Most Frequent Items</h3>
+                        <span className={styles.chartBadge}>Top 10</span>
+                    </div>
+                    {sortedFoods.length > 0 ? (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+                                    <th style={{ padding: '12px 0', fontWeight: '500' }}>Item</th>
+                                    <th style={{ padding: '12px 0', fontWeight: '500' }}>Frequency</th>
+                                    <th style={{ padding: '12px 0', fontWeight: '500', textAlign: 'right' }}>Total Spent</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedFoods.map(food => (
+                                    <tr key={food.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                        <td style={{ padding: '12px 0', fontWeight: '500', color: 'var(--text-primary)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-blue)' }}></div>
+                                                {food.name}
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '12px 0', color: 'var(--text-secondary)' }}>{food.count}x</td>
+                                        <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--accent-green)', fontWeight: '600' }}>{formatCurrency(food.spent, currency)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', padding: 'var(--space-lg) 0' }}>No food item data available</p>
+                    )}
                 </div>
             </div>
 
@@ -437,12 +668,12 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {!aiInsights && !insightsLoading && !insightsError && (
+                {!aiInsights[insightsPeriod] && !insightsLoading && !insightsError && (
                     <div style={{ textAlign: 'center', padding: 'var(--space-lg)' }}>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>
                             Get AI-powered predictions, nutrition grades, and personalized insights
                         </p>
-                        <button onClick={() => fetchAiInsights('week')} className="btn-primary" style={{ padding: '12px 24px' }}>
+                        <button onClick={() => fetchAiInsights(insightsPeriod)} className="btn-primary" style={{ padding: '12px 24px' }}>
                             <Brain size={16} /> Generate AI Insights
                         </button>
                     </div>
@@ -467,36 +698,36 @@ export default function DashboardPage() {
                     </div>
                 )}
 
-                {aiInsights && !insightsLoading && (
+                {aiInsights[insightsPeriod] && !insightsLoading && (
                     <div className={styles.insightsBody}>
                         {/* AI Summary */}
-                        {aiInsights.ai_summary && (
+                        {aiInsights[insightsPeriod].ai_summary && (
                             <div className={styles.insightCard}>
                                 <div className={styles.insightCardHeader}>
                                     <div className={styles.insightCardIcon} style={{ background: 'var(--accent-green-dim)', color: 'var(--accent-green)' }}>
                                         <Brain size={16} />
                                     </div>
-                                    <span className={styles.insightCardTitle}>{aiInsights.ai_summary.title || 'AI Summary'}</span>
+                                    <span className={styles.insightCardTitle}>{aiInsights[insightsPeriod].ai_summary.title || 'AI Summary'}</span>
                                 </div>
-                                <p className={styles.insightContent}>{aiInsights.ai_summary.overview}</p>
-                                {aiInsights.ai_summary.highlights?.length > 0 && (
+                                <p className={styles.insightContent}>{aiInsights[insightsPeriod].ai_summary.overview}</p>
+                                {aiInsights[insightsPeriod].ai_summary.highlights?.length > 0 && (
                                     <div style={{ marginTop: 'var(--space-sm)' }}>
-                                        {aiInsights.ai_summary.highlights.map((h, i) => (
+                                        {aiInsights[insightsPeriod].ai_summary.highlights.map((h, i) => (
                                             <p key={i} style={{ color: 'var(--accent-green)', fontSize: '0.82rem', margin: '4px 0' }}>✅ {h}</p>
                                         ))}
                                     </div>
                                 )}
-                                {aiInsights.ai_summary.concerns?.length > 0 && (
+                                {aiInsights[insightsPeriod].ai_summary.concerns?.length > 0 && (
                                     <div style={{ marginTop: 'var(--space-xs)' }}>
-                                        {aiInsights.ai_summary.concerns.map((c, i) => (
+                                        {aiInsights[insightsPeriod].ai_summary.concerns.map((c, i) => (
                                             <p key={i} style={{ color: 'var(--accent-orange)', fontSize: '0.82rem', margin: '4px 0' }}>⚠️ {c}</p>
                                         ))}
                                     </div>
                                 )}
-                                {aiInsights.ai_summary.action_items?.length > 0 && (
+                                {aiInsights[insightsPeriod].ai_summary.action_items?.length > 0 && (
                                     <div style={{ marginTop: 'var(--space-sm)', padding: 'var(--space-sm)', background: 'var(--bg-card)', borderRadius: 'var(--radius-sm)' }}>
                                         <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: '4px', fontWeight: 600 }}>ACTION ITEMS</p>
-                                        {aiInsights.ai_summary.action_items.map((a, i) => (
+                                        {aiInsights[insightsPeriod].ai_summary.action_items.map((a, i) => (
                                             <p key={i} style={{ color: 'var(--accent-blue)', fontSize: '0.82rem', margin: '4px 0' }}>→ {a}</p>
                                         ))}
                                     </div>
@@ -505,7 +736,7 @@ export default function DashboardPage() {
                         )}
 
                         {/* Consumption Predictions */}
-                        {aiInsights.consumption_predictions && (
+                        {aiInsights[insightsPeriod].consumption_predictions && (
                             <div className={styles.insightCard}>
                                 <div className={styles.insightCardHeader}>
                                     <div className={styles.insightCardIcon} style={{ background: 'var(--accent-blue-dim)', color: 'var(--accent-blue)' }}>
@@ -516,24 +747,24 @@ export default function DashboardPage() {
                                 <div className={styles.predictionGrid}>
                                     <div className={styles.predictionItem}>
                                         <span className={styles.predictionLabel}>Groceries Last</span>
-                                        <span className={styles.predictionValue}>{aiInsights.consumption_predictions.estimated_days_supply} days</span>
+                                        <span className={styles.predictionValue}>{aiInsights[insightsPeriod].consumption_predictions.estimated_days_supply} days</span>
                                     </div>
                                     <div className={styles.predictionItem}>
                                         <span className={styles.predictionLabel}>Next Shopping</span>
-                                        <span className={styles.predictionValue}>{aiInsights.consumption_predictions.next_shopping_predicted}</span>
+                                        <span className={styles.predictionValue}>{aiInsights[insightsPeriod].consumption_predictions.next_shopping_predicted}</span>
                                     </div>
                                     <div className={styles.predictionItem}>
                                         <span className={styles.predictionLabel}>Weekly Spend</span>
-                                        <span className={styles.predictionValue}>${aiInsights.consumption_predictions.estimated_weekly_spend}</span>
+                                        <span className={styles.predictionValue}>{formatCurrency(aiInsights[insightsPeriod].consumption_predictions.estimated_weekly_spend, currency)}</span>
                                     </div>
                                     <div className={styles.predictionItem}>
                                         <span className={styles.predictionLabel}>Monthly Spend</span>
-                                        <span className={styles.predictionValue}>${aiInsights.consumption_predictions.estimated_monthly_spend}</span>
+                                        <span className={styles.predictionValue}>{formatCurrency(aiInsights[insightsPeriod].consumption_predictions.estimated_monthly_spend, currency)}</span>
                                     </div>
                                 </div>
-                                {aiInsights.consumption_predictions.items_likely_to_run_out_first?.length > 0 && (
+                                {aiInsights[insightsPeriod].consumption_predictions.items_likely_to_run_out_first?.length > 0 && (
                                     <p className={styles.insightContent} style={{ marginTop: 'var(--space-sm)' }}>
-                                        🏃 Running out first: {aiInsights.consumption_predictions.items_likely_to_run_out_first.join(', ')}
+                                        🏃 Running out first: {aiInsights[insightsPeriod].consumption_predictions.items_likely_to_run_out_first.join(', ')}
                                     </p>
                                 )}
                             </div>
@@ -541,7 +772,7 @@ export default function DashboardPage() {
 
                         {/* Nutrition Grade + Health */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
-                            {aiInsights.nutrition_insights && (
+                            {aiInsights[insightsPeriod].nutrition_insights && (
                                 <div className={styles.insightCard}>
                                     <div className={styles.insightCardHeader}>
                                         <div className={styles.insightCardIcon} style={{ background: 'var(--accent-orange-dim)', color: 'var(--accent-orange)' }}>
@@ -550,20 +781,20 @@ export default function DashboardPage() {
                                         <span className={styles.insightCardTitle}>Nutrition Grade</span>
                                         <span style={{
                                             fontSize: '1.4rem', fontWeight: 800,
-                                            color: ['A', 'B'].includes(aiInsights.nutrition_insights.nutrition_grade) ? 'var(--accent-green)' :
-                                                aiInsights.nutrition_insights.nutrition_grade === 'C' ? 'var(--accent-yellow)' : 'var(--accent-red)',
-                                        }}>{aiInsights.nutrition_insights.nutrition_grade}</span>
+                                            color: ['A', 'B'].includes(aiInsights[insightsPeriod].nutrition_insights.nutrition_grade) ? 'var(--accent-green)' :
+                                                aiInsights[insightsPeriod].nutrition_insights.nutrition_grade === 'C' ? 'var(--accent-yellow)' : 'var(--accent-red)',
+                                        }}>{aiInsights[insightsPeriod].nutrition_insights.nutrition_grade}</span>
                                     </div>
-                                    <p className={styles.insightContent}>{aiInsights.nutrition_insights.nutrition_grade_explanation}</p>
+                                    <p className={styles.insightContent}>{aiInsights[insightsPeriod].nutrition_insights.nutrition_grade_explanation}</p>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: 'var(--space-sm)' }}>
-                                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '99px', background: aiInsights.nutrition_insights.protein_adequacy === 'sufficient' ? 'var(--accent-green-dim)' : 'var(--accent-red-dim)', color: aiInsights.nutrition_insights.protein_adequacy === 'sufficient' ? 'var(--accent-green)' : 'var(--accent-red)' }}>Protein: {aiInsights.nutrition_insights.protein_adequacy}</span>
-                                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '99px', background: aiInsights.nutrition_insights.sugar_alert === 'within limits' ? 'var(--accent-green-dim)' : 'rgba(251,146,60,0.1)', color: aiInsights.nutrition_insights.sugar_alert === 'within limits' ? 'var(--accent-green)' : '#fb923c' }}>Sugar: {aiInsights.nutrition_insights.sugar_alert}</span>
-                                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '99px', background: aiInsights.nutrition_insights.salt_assessment === 'within limits' ? 'var(--accent-green-dim)' : 'var(--accent-red-dim)', color: aiInsights.nutrition_insights.salt_assessment === 'within limits' ? 'var(--accent-green)' : 'var(--accent-red)' }}>Salt: {aiInsights.nutrition_insights.salt_assessment}</span>
+                                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '99px', background: aiInsights[insightsPeriod].nutrition_insights.protein_adequacy === 'sufficient' ? 'var(--accent-green-dim)' : 'var(--accent-red-dim)', color: aiInsights[insightsPeriod].nutrition_insights.protein_adequacy === 'sufficient' ? 'var(--accent-green)' : 'var(--accent-red)' }}>Protein: {aiInsights[insightsPeriod].nutrition_insights.protein_adequacy}</span>
+                                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '99px', background: aiInsights[insightsPeriod].nutrition_insights.sugar_alert === 'within limits' ? 'var(--accent-green-dim)' : 'rgba(251,146,60,0.1)', color: aiInsights[insightsPeriod].nutrition_insights.sugar_alert === 'within limits' ? 'var(--accent-green)' : '#fb923c' }}>Sugar: {aiInsights[insightsPeriod].nutrition_insights.sugar_alert}</span>
+                                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '99px', background: aiInsights[insightsPeriod].nutrition_insights.salt_assessment === 'within limits' ? 'var(--accent-green-dim)' : 'var(--accent-red-dim)', color: aiInsights[insightsPeriod].nutrition_insights.salt_assessment === 'within limits' ? 'var(--accent-green)' : 'var(--accent-red)' }}>Salt: {aiInsights[insightsPeriod].nutrition_insights.salt_assessment}</span>
                                     </div>
                                 </div>
                             )}
 
-                            {aiInsights.health_predictions && (
+                            {aiInsights[insightsPeriod].health_predictions && (
                                 <div className={styles.insightCard}>
                                     <div className={styles.insightCardHeader}>
                                         <div className={styles.insightCardIcon} style={{ background: 'var(--accent-pink-dim)', color: 'var(--accent-pink)' }}>
@@ -574,19 +805,19 @@ export default function DashboardPage() {
                                     <div className={styles.predictionGrid}>
                                         <div className={styles.predictionItem}>
                                             <span className={styles.predictionLabel}>Weight Impact</span>
-                                            <span className={styles.predictionValue} style={{ fontSize: '0.85rem' }}>{aiInsights.health_predictions.weight_impact}</span>
+                                            <span className={styles.predictionValue} style={{ fontSize: '0.85rem' }}>{aiInsights[insightsPeriod].health_predictions.weight_impact}</span>
                                         </div>
                                         <div className={styles.predictionItem}>
                                             <span className={styles.predictionLabel}>Energy Level</span>
-                                            <span className={styles.predictionValue} style={{ fontSize: '0.85rem' }}>{aiInsights.health_predictions.energy_level_forecast}</span>
+                                            <span className={styles.predictionValue} style={{ fontSize: '0.85rem' }}>{aiInsights[insightsPeriod].health_predictions.energy_level_forecast}</span>
                                         </div>
                                         <div className={styles.predictionItem}>
                                             <span className={styles.predictionLabel}>Immune Score</span>
-                                            <span className={styles.predictionValue}>{aiInsights.health_predictions.immune_support_score}/100</span>
+                                            <span className={styles.predictionValue}>{aiInsights[insightsPeriod].health_predictions.immune_support_score}/100</span>
                                         </div>
                                         <div className={styles.predictionItem}>
                                             <span className={styles.predictionLabel}>Gut Health</span>
-                                            <span className={styles.predictionValue} style={{ fontSize: '0.85rem' }}>{aiInsights.health_predictions.gut_health_indicator}</span>
+                                            <span className={styles.predictionValue} style={{ fontSize: '0.85rem' }}>{aiInsights[insightsPeriod].health_predictions.gut_health_indicator}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -594,7 +825,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Food Waste Risk */}
-                        {aiInsights.food_waste_risk && (
+                        {aiInsights[insightsPeriod].food_waste_risk && (
                             <div className={styles.insightCard}>
                                 <div className={styles.insightCardHeader}>
                                     <div className={styles.insightCardIcon} style={{ background: 'var(--accent-red-dim)', color: 'var(--accent-red)' }}>
@@ -602,17 +833,17 @@ export default function DashboardPage() {
                                     </div>
                                     <span className={styles.insightCardTitle}>Food Waste Risk</span>
                                     <span style={{ fontSize: '0.82rem', color: 'var(--accent-orange)', fontWeight: 700 }}>
-                                        ~{aiInsights.food_waste_risk.estimated_waste_percentage}% waste
+                                        ~{aiInsights[insightsPeriod].food_waste_risk.estimated_waste_percentage}% waste
                                     </span>
                                 </div>
-                                {aiInsights.food_waste_risk.high_waste_risk_items?.length > 0 && (
+                                {aiInsights[insightsPeriod].food_waste_risk.high_waste_risk_items?.length > 0 && (
                                     <p className={styles.insightContent}>
-                                        ⚠️ High risk: {aiInsights.food_waste_risk.high_waste_risk_items.join(', ')}
+                                        ⚠️ High risk: {aiInsights[insightsPeriod].food_waste_risk.high_waste_risk_items.join(', ')}
                                     </p>
                                 )}
-                                {aiInsights.food_waste_risk.tips_to_reduce_waste?.length > 0 && (
+                                {aiInsights[insightsPeriod].food_waste_risk.tips_to_reduce_waste?.length > 0 && (
                                     <div style={{ marginTop: 'var(--space-xs)' }}>
-                                        {aiInsights.food_waste_risk.tips_to_reduce_waste.map((t, i) => (
+                                        {aiInsights[insightsPeriod].food_waste_risk.tips_to_reduce_waste.map((t, i) => (
                                             <p key={i} style={{ fontSize: '0.82rem', color: 'var(--accent-green)', margin: '2px 0' }}>💡 {t}</p>
                                         ))}
                                     </div>
@@ -621,7 +852,7 @@ export default function DashboardPage() {
                         )}
 
                         {/* Spending Analytics */}
-                        {aiInsights.spending_analytics && (
+                        {aiInsights[insightsPeriod].spending_analytics && (
                             <div className={styles.insightCard}>
                                 <div className={styles.insightCardHeader}>
                                     <div className={styles.insightCardIcon} style={{ background: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24' }}>
@@ -632,18 +863,84 @@ export default function DashboardPage() {
                                 <div className={styles.predictionGrid}>
                                     <div className={styles.predictionItem}>
                                         <span className={styles.predictionLabel}>Cost per Calorie</span>
-                                        <span className={styles.predictionValue}>${aiInsights.spending_analytics.cost_per_calorie}</span>
+                                        <span className={styles.predictionValue}>{formatCurrency(aiInsights[insightsPeriod].spending_analytics.cost_per_calorie, currency)}</span>
                                     </div>
+                                    {aiInsights[insightsPeriod].spending_analytics.cost_per_person_per_day && (
+                                        <div className={styles.predictionItem}>
+                                            <span className={styles.predictionLabel}>Cost / Person / Day</span>
+                                            <span className={styles.predictionValue}>{formatCurrency(aiInsights[insightsPeriod].spending_analytics.cost_per_person_per_day, currency)}</span>
+                                        </div>
+                                    )}
                                     <div className={styles.predictionItem}>
                                         <span className={styles.predictionLabel}>Priciest Category</span>
-                                        <span className={styles.predictionValue} style={{ fontSize: '0.85rem' }}>{aiInsights.spending_analytics.most_expensive_category}</span>
+                                        <span className={styles.predictionValue} style={{ fontSize: '0.85rem' }}>{aiInsights[insightsPeriod].spending_analytics.most_expensive_category}</span>
                                     </div>
                                 </div>
-                                {aiInsights.spending_analytics.potential_savings && (
+                                {aiInsights[insightsPeriod].spending_analytics.potential_savings && (
                                     <p className={styles.insightContent} style={{ marginTop: 'var(--space-sm)' }}>
-                                        💰 {aiInsights.spending_analytics.potential_savings}
+                                        💰 {aiInsights[insightsPeriod].spending_analytics.potential_savings}
                                     </p>
                                 )}
+                            </div>
+                        )}
+                        
+                        {/* Red Flags */}
+                        {aiInsights[insightsPeriod].red_flags && (
+                            <div className={styles.insightCard}>
+                                <div className={styles.insightCardHeader}>
+                                    <div className={styles.insightCardIcon} style={{ background: 'var(--accent-red-dim)', color: 'var(--accent-red)' }}>
+                                        <AlertTriangle size={16} />
+                                    </div>
+                                    <span className={styles.insightCardTitle}>Dietary Red Flags</span>
+                                </div>
+                                {aiInsights[insightsPeriod].red_flags.unhealthy_items?.length > 0 && (
+                                    <div style={{ marginBottom: 'var(--space-sm)' }}>
+                                        <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: '4px', fontWeight: 600 }}>ITEMS TO WATCH</p>
+                                        {aiInsights[insightsPeriod].red_flags.unhealthy_items.map((item, i) => (
+                                            <p key={i} className={styles.insightContent} style={{ color: 'var(--accent-orange)' }}>🚩 {item}</p>
+                                        ))}
+                                    </div>
+                                )}
+                                {aiInsights[insightsPeriod].red_flags.critical_warnings?.length > 0 && (
+                                    <div>
+                                        <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: '4px', fontWeight: 600 }}>CRITICAL WARNINGS</p>
+                                        {aiInsights[insightsPeriod].red_flags.critical_warnings.map((warn, i) => (
+                                            <p key={i} className={styles.insightContent} style={{ color: 'var(--accent-red)' }}>⚠️ {warn}</p>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Smart Recommendations */}
+                        {aiInsights[insightsPeriod].smart_recommendations && (
+                            <div className={styles.insightCard} style={{ gridColumn: '1 / -1' }}>
+                                <div className={styles.insightCardHeader}>
+                                    <div className={styles.insightCardIcon} style={{ background: 'var(--accent-green-dim)', color: 'var(--accent-green)' }}>
+                                        <Apple size={16} />
+                                    </div>
+                                    <span className={styles.insightCardTitle}>Smart Purchase Recommendations</span>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+                                    <div>
+                                        <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: '8px', fontWeight: 600 }}>MISSING NUTRIENTS</p>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                            {aiInsights[insightsPeriod].smart_recommendations.missing_nutrients?.map((nut, i) => (
+                                                <span key={i} style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '4px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                    {nut}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: '8px', fontWeight: 600 }}>RECOMMENDED ADDITIONS</p>
+                                        {aiInsights[insightsPeriod].smart_recommendations.items_to_buy?.map((item, i) => (
+                                            <p key={i} className={styles.insightContent} style={{ color: 'var(--accent-green)', marginBottom: '6px' }}>
+                                                + {item}
+                                            </p>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>

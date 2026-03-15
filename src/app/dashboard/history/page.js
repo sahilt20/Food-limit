@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
+import { formatCurrency } from '@/lib/currency';
 import {
     Calendar,
     ShoppingCart,
@@ -15,39 +16,36 @@ import {
 } from 'lucide-react';
 import styles from './history.module.css';
 
-const DEMO_SESSIONS = [
-    { id: '1', session_name: 'Weekly Groceries', session_date: '2026-02-09', store_name: 'Whole Foods', total_spent: 85.40, total_calories: 12500, total_items: 15 },
-    { id: '2', session_name: 'Quick Stop', session_date: '2026-02-07', store_name: "Trader Joe's", total_spent: 32.10, total_calories: 5800, total_items: 8 },
-    { id: '3', session_name: 'Monthly Stock Up', session_date: '2026-02-03', store_name: 'Costco', total_spent: 156.80, total_calories: 28400, total_items: 24 },
-    { id: '4', session_name: 'Fruit Run', session_date: '2026-01-30', store_name: 'Farmers Market', total_spent: 28.50, total_calories: 3200, total_items: 10 },
-    { id: '5', session_name: 'Dinner Party Prep', session_date: '2026-01-25', store_name: 'Whole Foods', total_spent: 72.30, total_calories: 9800, total_items: 12 },
-    { id: '6', session_name: 'Meal Prep Sunday', session_date: '2026-01-20', store_name: "Trader Joe's", total_spent: 64.20, total_calories: 11200, total_items: 18 },
-    { id: '7', session_name: 'Snack Run', session_date: '2026-01-15', store_name: 'Target', total_spent: 22.90, total_calories: 4500, total_items: 6 },
-    { id: '8', session_name: 'Holiday Shopping', session_date: '2026-01-10', store_name: 'Costco', total_spent: 198.50, total_calories: 35000, total_items: 30 },
-];
-
 export default function HistoryPage() {
     const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [currency, setCurrency] = useState('USD');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedSession, setSelectedSession] = useState(null);
 
     useEffect(() => {
         const loadSessions = async () => {
-            const isDemo = localStorage.getItem('foodlimit_demo');
-            if (isDemo) {
-                setSessions(DEMO_SESSIONS);
-                setLoading(false);
-                return;
-            }
-
             const supabase = createClient();
-            const { data } = await supabase
-                .from('grocery_sessions')
-                .select('*')
-                .order('session_date', { ascending: false });
+            const { data: { user } } = await supabase.auth.getUser();
 
-            setSessions(data || []);
+            if (user) {
+                const [{ data: sessionsData }, { data: profData }] = await Promise.all([
+                    supabase
+                        .from('grocery_sessions')
+                        .select('*')
+                        .order('session_date', { ascending: false }),
+                    supabase
+                        .from('profiles')
+                        .select('currency_preference')
+                        .eq('id', user.id)
+                        .single()
+                ]);
+
+                if (profData) setCurrency(profData.currency_preference || 'USD');
+                setSessions(sessionsData || []);
+            } else {
+                setSessions([]);
+            }
             setLoading(false);
         };
         loadSessions();
@@ -55,12 +53,6 @@ export default function HistoryPage() {
 
     const handleDeleteSession = async (id) => {
         if (!window.confirm("Are you sure you want to permanently delete this shopping trip?")) return;
-
-        const isDemo = localStorage.getItem('foodlimit_demo');
-        if (isDemo) {
-            setSessions(sessions.filter(s => s.id !== id));
-            return;
-        }
 
         const supabase = createClient();
         const { error } = await supabase
@@ -133,7 +125,7 @@ export default function HistoryPage() {
                 <div className={styles.summaryCard}>
                     <DollarSign size={20} className={styles.summaryIcon} style={{ color: 'var(--accent-blue)' }} />
                     <div>
-                        <span className={styles.summaryValue}>${totalSpent.toFixed(0)}</span>
+                        <span className={styles.summaryValue}>{formatCurrency(totalSpent, currency)}</span>
                         <span className={styles.summaryLabel}>Total Spent</span>
                     </div>
                 </div>
@@ -205,7 +197,7 @@ export default function HistoryPage() {
                                 </div>
                                 <div className={styles.sessionStatItem}>
                                     <span className={styles.statNumber} style={{ color: 'var(--accent-green)' }}>
-                                        ${(session.total_spent || 0).toFixed(2)}
+                                        {formatCurrency(session.total_spent || 0, currency)}
                                     </span>
                                     <span className={styles.statDesc}>Spent</span>
                                 </div>

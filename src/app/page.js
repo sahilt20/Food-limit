@@ -111,9 +111,6 @@ export default function HomePage() {
             Start Tracking Free
             <ArrowRight size={18} />
           </Link>
-          <a href="/FoodLimit.apk" download className="btn-secondary" style={{ padding: '16px 36px', fontSize: '1rem' }}>
-            📱 Download Android App
-          </a>
         </div>
 
         {/* Nutrient Pills */}

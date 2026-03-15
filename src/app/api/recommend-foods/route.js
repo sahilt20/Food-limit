@@ -12,7 +12,7 @@ export async function POST(request) {
     }
 
     try {
-        const { items } = await request.json();
+        const { items, storeName } = await request.json();
 
         if (!items || items.length === 0) {
             return NextResponse.json(
@@ -21,30 +21,35 @@ export async function POST(request) {
             );
         }
 
-        const itemsList = items.map(i => `- ${i.name} (${i.category || 'Other'})`).join('\n');
+        const itemsList = items.map(i => `- ${i.name} (${i.category || 'Other'}, $${i.price || 0})`).join('\n');
+        const storeContext = storeName ? `The user is currently shopping at ${storeName}. ` : '';
 
-        const prompt = `You are a nutrition and health expert. For each grocery item below, suggest a HEALTHIER alternative that is:
-- More nutritious
-- Similar in use/purpose
-- Reasonably priced
+        const prompt = `You are a world-class nutrition and grocery shopping expert. ${storeContext}For each grocery item below, suggest HEALTHIER alternatives. 
+You must provide multiple recommendations per item:
+1. "same_store_alternative": An alternative likely found in the SAME store (e.g. if they are at Whole Foods, suggest a Whole Foods brand or organic equivalent). If no store is known, suggest a widely available brand.
+2. "best_health_alternative": The absolute healthiest alternative regardless of store.
 
 Items:
 ${itemsList}
 
-Return a JSON object:
+Return a valid JSON object matching this schema exactly:
 {
     "recommendations": [
         {
-            "original": "White Rice",
-            "alternative": "Brown Rice",
-            "reason": "Higher fiber and more micronutrients",
-            "nutrition_improvement": "+3g fiber, +2g protein per serving",
-            "price_comparison": "Similar price"
+            "original_item": "White Rice",
+            "same_store_alternative": {
+                "name": "Brown Rice (Store Brand)",
+                "reason": "Higher fiber, likely available where you are shopping",
+                "price_impact": "Similar price"
+            },
+            "best_health_alternative": {
+                "name": "Quinoa / Cauliflower Rice",
+                "reason": "Significantly higher protein and lower glycemic index",
+                "price_impact": "Slightly more expensive"
+            }
         }
     ]
-}
-
-IMPORTANT: Return ONLY valid JSON. No markdown, no extra text.`;
+}`;
 
         try {
             const { data, provider } = await generateJSON(prompt);
@@ -53,13 +58,19 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no extra text.`;
                 { headers: rateLimitHeaders(rl) }
             );
         } catch (aiError) {
-            // Fallback: return generic recommendations
+            // Fallback: return generic recommendations matching the new schema
             const fallbackRecs = items.map(item => ({
-                original: item.name,
-                alternative: `Organic ${item.name}`,
-                reason: 'AI recommendations unavailable — try again later or add an OpenAI API key as fallback',
-                nutrition_improvement: 'N/A',
-                price_comparison: 'Varies',
+                original_item: item.name,
+                same_store_alternative: {
+                    name: `Store Brand ${item.name}`,
+                    reason: 'AI unavailable — try again later or add an OpenAI/DeepSeek key',
+                    price_impact: 'Usually cheaper',
+                },
+                best_health_alternative: {
+                    name: `Organic ${item.name}`,
+                    reason: 'Usually fewer pesticides/healthier soil processing',
+                    price_impact: 'Varies',
+                }
             }));
 
             return NextResponse.json({

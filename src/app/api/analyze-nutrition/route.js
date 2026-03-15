@@ -28,6 +28,8 @@ export async function POST(request) {
 
         const prompt = `You are a nutrition expert. Analyze these grocery items and provide detailed nutrition data.
 
+CRITICAL INSTRUCTION: Calculate the TOTAL nutritional values scaled for the ENTIRE quantity and unit specified per item (e.g. if the item is "2 kg of chicken", provide the macros for 2 kg, not 100g).
+
 Items:
 ${itemsList}
 
@@ -43,6 +45,14 @@ Provide a JSON response with this exact structure:
             "fiber_g": 3,
             "sugar_g": 8,
             "sodium_mg": 200,
+            "calcium_mg": 50,
+            "iron_mg": 1.5,
+            "potassium_mg": 300,
+            "vitamin_a_mcg": 10,
+            "vitamin_c_mg": 5,
+            "vitamin_d_mcg": 0,
+            "zinc_mg": 1,
+            "magnesium_mg": 20,
             "health_score": 75,
             "category": "Protein"
         }
@@ -98,6 +108,9 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no extra text.`;
                     name: item.name,
                     calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0,
                     fiber_g: 0, sugar_g: 0, sodium_mg: 0,
+                    calcium_mg: 0, iron_mg: 0, potassium_mg: 0,
+                    vitamin_a_mcg: 0, vitamin_c_mg: 0, vitamin_d_mcg: 0,
+                    zinc_mg: 0, magnesium_mg: 0,
                     health_score: 50,
                     category: item.category || 'Other',
                 };

@@ -13,7 +13,7 @@ export async function POST(request) {
   }
 
   try {
-    const { sessions, period = 'week' } = await request.json();
+    const { sessions, period = 'week', household_calorie_target = 2000, family_size = 1 } = await request.json();
 
     if (!sessions || sessions.length === 0) {
       return NextResponse.json(
@@ -22,49 +22,62 @@ export async function POST(request) {
       );
     }
 
-    const prompt = `You are an advanced nutrition and grocery analytics AI. Analyze this grocery shopping data and provide comprehensive insights.
+    const prompt = `You are an advanced nutrition and grocery analytics AI. Analyze this grocery shopping data and provide comprehensive insights based on the household target.
+
+Household Context:
+- Family Size: ${family_size} people
+- Target Daily Calories (Entire Household Combined): ${household_calorie_target} calories
 
 Shopping Data (${period} period):
 ${JSON.stringify(sessions, null, 2)}
 
 Provide a detailed JSON response with this exact structure:
 {
-    "consumption_patterns": {
-        "summary": "Brief overview of eating patterns",
-        "top_categories": ["category1", "category2"],
-        "frequency_insights": "How often they shop and what they buy most",
-        "variety_score": 75
+    "ai_summary": {
+        "title": "Monthly Nutrition Pulse",
+        "overview": "Brief overview characterization of recent shopping.",
+        "highlights": ["Great protein choices", "Veggies on point"],
+        "concerns": ["Slight uptick in salt", "Low fiber"],
+        "action_items": ["Swap white bread for whole wheat", "Add a leafy green"]
     },
-    "nutrition_analysis": {
-        "overall_score": 78,
-        "strengths": ["Good protein intake", "Variety of fruits"],
-        "weaknesses": ["Low fiber", "High sodium"],
-        "macro_balance": "Description of macro nutrient balance",
-        "micro_highlights": "Notable vitamin/mineral patterns"
+    "consumption_predictions": {
+        "estimated_days_supply": 14,
+        "next_shopping_predicted": "Nov 2nd",
+        "estimated_weekly_spend": 120,
+        "estimated_monthly_spend": 450,
+        "items_likely_to_run_out_first": ["Milk", "Eggs", "Bananas"]
     },
-    "spending_insights": {
-        "total_period": 245.50,
-        "average_per_trip": 61.38,
+    "nutrition_insights": {
+        "nutrition_grade": "A",
+        "nutrition_grade_explanation": "You hit almost all macronutrients perfectly with a strong bias towards whole foods.",
+        "protein_adequacy": "sufficient",
+        "sugar_alert": "within limits",
+        "salt_assessment": "within limits"
+    },
+    "spending_analytics": {
+        "cost_per_calorie": 0.02,
+        "cost_per_person_per_day": 8.50,
         "most_expensive_category": "Protein",
-        "budget_tips": ["Buy seasonal produce", "Consider bulk grains"],
-        "cost_per_calorie": 0.02
+        "potential_savings": "Switching from pre-cut to whole veggies could save ~$12/week"
     },
     "health_predictions": {
-        "positive_trends": ["Increasing vegetable intake"],
-        "concerns": ["Processed food frequency rising"],
-        "recommendations": ["Add more leafy greens", "Reduce sugar intake"],
-        "projected_health_score": 82
+        "weight_impact": "Neutral/Maintenance",
+        "energy_level_forecast": "Stable, high",
+        "immune_support_score": 85,
+        "gut_health_indicator": "Excellent"
     },
     "food_waste_risk": {
-        "risk_level": "medium",
-        "high_risk_items": ["Leafy greens", "Berries"],
-        "prevention_tips": ["Freeze berries within 3 days", "Plan meals around perishables"],
-        "estimated_waste_percent": 15
+        "estimated_waste_percentage": 5,
+        "high_waste_risk_items": ["Strawberries", "Spinach"],
+        "tips_to_reduce_waste": ["Freeze spinach", "Store strawberries in glass containers"]
     },
-    "meal_suggestions": {
-        "based_on_purchases": ["Chicken stir-fry with broccoli", "Oatmeal with berries"],
-        "missing_ingredients": ["olive oil", "garlic"],
-        "weekly_meal_plan_tip": "A brief tip for meal planning"
+    "red_flags": {
+        "unhealthy_items": ["Highly processed chips (high sodium)", "Sugary cereal (low fiber, high sugar)"],
+        "critical_warnings": ["Sodium intake is consistently 30% over the household maximum due to canned soups."]
+    },
+    "smart_recommendations": {
+        "missing_nutrients": ["Fiber", "Omega-3"],
+        "items_to_buy": ["Add Lentils for fiber and protein", "Buy chia seeds for Omega-3 and fiber"]
     }
 }
 
@@ -78,45 +91,21 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no explanations outside the JSON
   } catch (error) {
     console.error('AI analytics error:', error);
 
-    // Return helpful template data as local fallback
     const fallbackData = {
-      consumption_patterns: {
-        summary: 'AI analysis temporarily unavailable. Add an OpenAI key as fallback.',
-        top_categories: ['General'],
-        frequency_insights: 'Unable to analyze — try again shortly.',
-        variety_score: 0,
-      },
-      nutrition_analysis: {
-        overall_score: 0,
-        strengths: [],
-        weaknesses: [],
-        macro_balance: 'Analysis unavailable',
-        micro_highlights: 'Analysis unavailable',
-      },
-      spending_insights: {
-        total_period: 0,
-        average_per_trip: 0,
-        most_expensive_category: 'N/A',
-        budget_tips: [],
-        cost_per_calorie: 0,
-      },
-      health_predictions: {
-        positive_trends: [],
+      ai_summary: {
+        title: 'Fallback Summary',
+        overview: 'AI analysis temporarily unavailable. Add a DeepSeek key as fallback.',
+        highlights: [],
         concerns: [],
-        recommendations: ['Configure an AI API key for personalized insights'],
-        projected_health_score: 0,
+        action_items: []
       },
-      food_waste_risk: {
-        risk_level: 'unknown',
-        high_risk_items: [],
-        prevention_tips: [],
-        estimated_waste_percent: 0,
-      },
-      meal_suggestions: {
-        based_on_purchases: [],
-        missing_ingredients: [],
-        weekly_meal_plan_tip: 'Configure an AI API key for meal suggestions',
-      },
+      consumption_predictions: null,
+      nutrition_insights: null,
+      spending_analytics: null,
+      health_predictions: null,
+      food_waste_risk: null,
+      red_flags: null,
+      smart_recommendations: null
     };
 
     return NextResponse.json(

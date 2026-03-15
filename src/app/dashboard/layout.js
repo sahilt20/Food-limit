@@ -15,6 +15,8 @@ import {
     Sparkles,
     ChevronRight,
     Download,
+    ChefHat,
+    Lightbulb,
 } from 'lucide-react';
 import styles from './layout.module.css';
 
@@ -22,6 +24,8 @@ const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/dashboard/add', label: 'Add Groceries', icon: PlusCircle },
     { href: '/dashboard/history', label: 'History', icon: History },
+    { href: '/dashboard/recipes', label: 'AI Recipes', icon: ChefHat },
+    { href: '/dashboard/recommendations', label: 'Recommendations', icon: Lightbulb },
     { href: '/dashboard/profile', label: 'Profile', icon: UserCircle },
 ];
 
@@ -125,10 +129,6 @@ export default function DashboardLayout({ children }) {
                 </nav>
 
                 <div className={styles.sidebarFooter}>
-                    <a href="/FoodLimit.apk" download className={styles.downloadBtn} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'var(--accent-primary, #6366f1)', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', outline: 'none', width: '100%', marginBottom: '1rem', fontWeight: '500', transition: 'opacity 0.2s', textDecoration: 'none' }} onMouseOver={e => e.currentTarget.style.opacity = '0.9'} onMouseOut={e => e.currentTarget.style.opacity = '1'}>
-                        <Download size={18} />
-                        <span>Get Android App</span>
-                    </a>
                     <div className={styles.userInfo}>
                         <div className={styles.userAvatar}>
                             {getInitials(profile?.full_name)}

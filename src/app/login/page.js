@@ -127,12 +127,6 @@ export default function LoginPage() {
                     <span>or</span>
                 </div>
 
-                <button onClick={handleDemoMode} className="btn-secondary" style={{ width: '100%', padding: '14px' }}>
-                    <Sparkles size={18} />
-                    Try Demo Mode
-                    <ArrowRight size={16} />
-                </button>
-
                 <p className={styles.footer}>
                     Don&apos;t have an account?{' '}
                     <Link href="/register" className={styles.link}>Create one</Link>

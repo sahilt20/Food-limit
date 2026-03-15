@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import { lookupNutrition, getAllFoods, getCategories, NUTRIENT_INFO } from '@/lib/nutritionDB';
+import { formatCurrency } from '@/lib/currency';
 import {
     Upload,
     FileText,
@@ -54,10 +55,23 @@ export default function AddGroceriesPage() {
     const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [analyzing, setAnalyzing] = useState(false);
+    const [analyzeStep, setAnalyzeStep] = useState(''); // New state for progress text
     const [aiSummary, setAiSummary] = useState(null);
     const [recommendations, setRecommendations] = useState(null);
-    const [loadingRecs, setLoadingRecs] = useState(false);
     const [showFoodPicker, setShowFoodPicker] = useState(null);
+    const [currency, setCurrency] = useState('USD');
+
+    useEffect(() => {
+        const fetchCurrency = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data } = await supabase.from('profiles').select('currency_preference').eq('id', user.id).single();
+                if (data) setCurrency(data.currency_preference || 'USD');
+            }
+        };
+        fetchCurrency();
+    }, []);
 
     // Receipt upload state
     const [receiptImage, setReceiptImage] = useState(null);
@@ -315,9 +329,11 @@ export default function AddGroceriesPage() {
         }
 
         setAnalyzing(true);
+        setAnalyzeStep('Step 1/2: Analyzing nutrition macros...');
         setError('');
         setAiSummary(null);
         setRecommendations(null);
+        setNutritionResults([]);
 
         try {
             // Call AI nutrition analysis
@@ -364,33 +380,34 @@ export default function AddGroceriesPage() {
             });
 
             setNutritionResults(results);
+            
+            // Advance progress and await recommendations before finalizing
+            setAnalyzeStep('Step 2/2: Finding healthier alternatives...');
+            await fetchRecommendations(validItems, storeName);
+            
             setAnalyzed(true);
 
-            // Get AI food recommendations in parallel
-            fetchRecommendations(validItems);
         } catch (err) {
             setError('Analysis failed: ' + (err.message || 'Unknown error'));
         } finally {
             setAnalyzing(false);
+            setAnalyzeStep('');
         }
     };
 
-    const fetchRecommendations = async (itemsList) => {
-        setLoadingRecs(true);
+    const fetchRecommendations = async (itemsList, store) => {
         try {
             const response = await fetch('/api/recommend-foods', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: itemsList }),
+                body: JSON.stringify({ items: itemsList, storeName: store }),
             });
             const data = await response.json();
             if (response.ok && data.data) {
-                setRecommendations(data.data);
+                setRecommendations(data.data.recommendations);
             }
         } catch (e) {
             // Silently fail — recommendations are optional
-        } finally {
-            setLoadingRecs(false);
         }
     };
 
@@ -411,17 +428,6 @@ export default function AddGroceriesPage() {
         setSaving(true);
 
         try {
-            const isDemo = localStorage.getItem('foodlimit_demo');
-
-            if (isDemo) {
-                // Demo mode - just show success
-                setTimeout(() => {
-                    setSaving(false);
-                    setSaved(true);
-                }, 1000);
-                return;
-            }
-
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
 
@@ -445,6 +451,8 @@ export default function AddGroceriesPage() {
                     total_spent: totalSpent,
                     total_calories: totalCalories,
                     total_items: validItems.length,
+                    ai_summary: aiSummary,
+                    recommendations: recommendations,
                 })
                 .select()
                 .single();
@@ -517,7 +525,7 @@ export default function AddGroceriesPage() {
                             <label>Total Calories</label>
                         </div>
                         <div className={styles.successStat}>
-                            <span>${totalPrice.toFixed(2)}</span>
+                            <span>{formatCurrency(totalPrice, currency)}</span>
                             <label>Total Spent</label>
                         </div>
                     </div>
@@ -582,7 +590,6 @@ export default function AddGroceriesPage() {
                             <Upload size={48} className={styles.uploadIcon} />
                             <h3>Upload Receipt Image</h3>
                             <p>Drag and drop or click to upload your receipt</p>
-                            <p className={styles.uploadNote}>Uses free client-side OCR (Tesseract.js) — runs entirely in your browser</p>
                             <button className="btn-secondary" style={{ marginTop: '16px' }} onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
                                 Choose File
                             </button>
@@ -644,7 +651,7 @@ export default function AddGroceriesPage() {
                                                         <span className={styles.extractedNum}>{idx + 1}</span>
                                                         <span className={styles.extractedName}>{item.name}</span>
                                                         {item.price > 0 && (
-                                                            <span className={styles.extractedPrice}>${item.price.toFixed(2)}</span>
+                                                            <span className={styles.extractedPrice}>{formatCurrency(item.price, currency)}</span>
                                                         )}
                                                     </div>
                                                 ))}
@@ -671,7 +678,7 @@ export default function AddGroceriesPage() {
                     {error && <div className={styles.errorMsg} style={{ marginTop: 'var(--space-md)' }}>{error}</div>}
 
                     <p className={styles.receiptHint}>
-                        💡 Tip: For best results, take a clear, well-lit photo of your receipt. The OCR runs entirely in your browser — no data is sent to any server.
+                        💡 Tip: For best results, take a clear, well-lit photo of your receipt.
                     </p>
                 </div>
             )}
@@ -704,7 +711,7 @@ export default function AddGroceriesPage() {
                     <div className={styles.itemsSection}>
                         <div className={styles.itemsHeader}>
                             <h3><ShoppingCart size={18} /> Items ({items.length})</h3>
-                            <span className={styles.totalPrice}>Total: ${totalPrice.toFixed(2)}</span>
+                            <span className={styles.totalPrice}>Total: {formatCurrency(totalPrice, currency)}</span>
                         </div>
 
                         <div className={styles.itemsList}>
@@ -788,7 +795,7 @@ export default function AddGroceriesPage() {
                                             <input
                                                 className="input-field"
                                                 type="number"
-                                                placeholder="$0.00"
+                                                placeholder="0.00"
                                                 min="0"
                                                 step="0.01"
                                                 value={item.price || ''}
@@ -826,11 +833,18 @@ export default function AddGroceriesPage() {
 
                     {/* Analyze Button */}
                     <div className={styles.actionBar}>
-                        <button onClick={analyzeNutrition} className="btn-primary" disabled={analyzing} style={{ padding: '16px 32px' }}>
+                        <button onClick={analyzeNutrition} className="btn-primary" disabled={analyzing} style={{ padding: '16px 32px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             {analyzing ? (
-                                <><Loader size={18} className={styles.spinningIcon} /> AI Analyzing...</>
+                                <>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Loader size={18} className={styles.spinningIcon} /> AI Analyzing...
+                                    </div>
+                                    <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{analyzeStep}</span>
+                                </>
                             ) : (
-                                <><Brain size={18} /> Analyze with AI</>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Brain size={18} /> Analyze with AI
+                                </div>
                             )}
                         </button>
                     </div>
@@ -936,46 +950,35 @@ export default function AddGroceriesPage() {
                             </div>
 
                             {/* AI Recommendations */}
-                            {loadingRecs && (
-                                <div className={styles.recsLoading}>
-                                    <Loader size={16} className={styles.spinningIcon} />
-                                    <span>🤖 AI finding healthier alternatives...</span>
-                                </div>
-                            )}
-
                             {recommendations && (
                                 <div className={styles.recsSection}>
                                     <h3 className={styles.recsTitle}><Leaf size={18} /> Healthier Alternatives</h3>
 
                                     <div className={styles.recsList}>
-                                        {recommendations.recommendations?.map((rec, idx) => (
-                                            <div key={idx} className={styles.recCard}>
+                                        {recommendations?.map((rec, idx) => (
+                                            <div key={idx} className={styles.recCard} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                 <div className={styles.recSwap}>
-                                                    <span className={styles.recOriginal}>{rec.original}</span>
+                                                    <span className={styles.recOriginal}>{rec.original_item}</span>
                                                     <ArrowRight size={16} className={styles.recArrow} />
-                                                    <span className={styles.recAlternative}>{rec.alternative}</span>
+                                                    <span className={styles.recAlternative}>Healthier Swaps</span>
                                                 </div>
-                                                <p className={styles.recReason}>{rec.reason}</p>
-                                                <div className={styles.recMeta}>
-                                                    {rec.nutrition_improvement && (
-                                                        <span className={styles.recImprovement}><TrendingUp size={12} /> {rec.nutrition_improvement}</span>
-                                                    )}
-                                                    {rec.swap_difficulty && (
-                                                        <span className={styles.recDifficulty}>Swap: {rec.swap_difficulty}</span>
-                                                    )}
+                                                
+                                                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid var(--accent-blue)' }}>
+                                                    <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem', color: 'var(--accent-blue)' }}>🏬 Same Store Option</p>
+                                                    <p style={{ margin: '4px 0', fontWeight: 500 }}>{rec.same_store_alternative?.name}</p>
+                                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{rec.same_store_alternative?.reason}</p>
+                                                    <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--accent-green)' }}>{rec.same_store_alternative?.price_impact}</p>
+                                                </div>
+
+                                                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid var(--accent-green)' }}>
+                                                    <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem', color: 'var(--accent-green)' }}>🌱 Healthiest Option</p>
+                                                    <p style={{ margin: '4px 0', fontWeight: 500 }}>{rec.best_health_alternative?.name}</p>
+                                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{rec.best_health_alternative?.reason}</p>
+                                                    <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--accent-orange)' }}>{rec.best_health_alternative?.price_impact}</p>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
-
-                                    {recommendations.overall_tips?.length > 0 && (
-                                        <div className={styles.tipsList}>
-                                            <h4>💡 Tips</h4>
-                                            {recommendations.overall_tips.map((tip, idx) => (
-                                                <p key={idx} className={styles.tipItem}>• {tip}</p>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
