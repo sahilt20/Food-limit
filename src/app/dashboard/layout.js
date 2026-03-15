@@ -94,7 +94,7 @@ export default function DashboardLayout({ children }) {
             {/* Sidebar */}
             <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`}>
                 <div className={styles.sidebarHeader}>
-                    <Link href="/dashboard" className={styles.logo}>
+                    <Link href="/dashboard" className={styles.logo} onClick={() => setSidebarOpen(false)}>
                         <Sparkles size={24} />
                         <span>FoodLimit</span>
                     </Link>

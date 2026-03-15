@@ -470,9 +470,7 @@ select {
 
 /* ========== Responsive ========== */
 @media (max-width: 768px) {
-  :root {
-    --sidebar-width: 0px;
-  }
+  /* Sidebar width is preserved for mobile drawer, margin-left is handled in layout.module.css */
 }
 
 /* ========== Loading skeleton ========== */
