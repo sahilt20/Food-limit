@@ -160,6 +160,27 @@
     flex-wrap: wrap;
 }
 
+.downloadBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--accent-green);
+    background: var(--accent-green-dim);
+    border: 1px solid rgba(0, 212, 170, 0.25);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.downloadBtn:hover {
+    background: rgba(0, 212, 170, 0.15);
+    border-color: var(--accent-green);
+    transform: translateY(-2px);
+}
+
 /* ========== Nutrient Pills ========== */
 .nutrientPills {
     display: flex;

@@ -28,12 +28,12 @@ export async function POST(request) {
         const base64 = buffer.toString('base64');
         const mimeType = receipt.type || 'image/jpeg';
 
-        const prompt = `You are an expert grocery receipt OCR parser. Carefully examine this receipt image and extract ALL food/grocery items.
+        const prompt = `You are an expert grocery receipt OCR parser. Carefully examine this receipt image and extract ALL purchased items, separating food from non-food.
 
 CRITICAL INSTRUCTIONS:
 1. **Decode abbreviated names** — supermarket receipts use short codes. Expand them to full readable names:
    - "JS BRTWATER 2L" → "Britvic Water 2L"
-   - "JS CC CHESTNUT MUSHR" → "Chestnut Mushrooms" 
+   - "JS CC CHESTNUT MUSHR" → "Chestnut Mushrooms"
    - "JS S/SKIM MLK 1.136L" → "Semi-Skimmed Milk 1.136L"
    - "ACTIVIA F/BERIS&CEX4" → "Activia Fruit Berries & Cereal x4"
    - "ST EWE FREE EGGS X6" → "Free Range Eggs x6"
@@ -45,13 +45,18 @@ CRITICAL INSTRUCTIONS:
 
 2. **Extract quantity from the item name** if it contains multipliers like "X4", "X6", "X8", "2L" etc.
 
-3. **Skip non-food lines**: "Nectar Price Saving", "PRICE REDUCTION", "BALANCE DUE", "GIFT CARD", "CHANGE", "SAVINGS", "PROMOTIONS", payment details, loyalty points, etc.
+3. **Classify each item as food or non-food**:
+   - FOOD: anything edible — groceries, drinks, snacks, ingredients, condiments, etc.
+   - NON-FOOD: household products, cleaning supplies, toiletries, paper goods, plastic bags, pet supplies, batteries, magazines, kitchenware, etc.
+     Examples: dish soap, laundry detergent, trash bags, toilet paper, shampoo, toothpaste, sponges, foil, cling film, carrier bags, pet food
 
-4. **Handle currency**: Prices may be in £ (GBP), $ (USD), or € (EUR). Convert to numeric values (e.g., £2.55 → 2.55).
+4. **Skip receipt metadata lines**: "Nectar Price Saving", "PRICE REDUCTION", "BALANCE DUE", "GIFT CARD", "CHANGE", "SAVINGS", "PROMOTIONS", payment details, loyalty points, etc.
 
-5. **Detect the store name** from the receipt header (e.g., "Sainsbury's", "Tesco", "Whole Foods").
+5. **Handle currency**: Prices may be in £ (GBP), $ (USD), or € (EUR). Convert to numeric values (e.g., £2.55 → 2.55).
 
-6. **Assign accurate categories** to each item.
+6. **Detect the store name** from the receipt header (e.g., "Sainsbury's", "Tesco", "Whole Foods").
+
+7. **Assign accurate categories** to each item.
 
 Return a JSON object:
 {
@@ -62,13 +67,24 @@ Return a JSON object:
             "quantity": 1,
             "unit": "piece",
             "price": 2.55,
-            "category": "Protein"
+            "category": "Protein",
+            "is_food": true
+        }
+    ],
+    "non_food_items": [
+        {
+            "name": "Kitchen Roll 2-Pack",
+            "quantity": 1,
+            "unit": "piece",
+            "price": 1.80,
+            "category": "Household"
         }
     ],
     "total": 20.41
 }
 
-Categories: Fruits, Vegetables, Protein, Dairy, Grains, Legumes, Oils, Snacks, Beverages, Spices, Other
+Food categories: Fruits, Vegetables, Protein, Dairy, Grains, Legumes, Oils, Snacks, Beverages, Spices, Other
+Non-food categories: Household, Cleaning, Toiletries, Pet, Other
 
 If the image is NOT a receipt, return: { "error": "This does not appear to be a grocery receipt" }
 

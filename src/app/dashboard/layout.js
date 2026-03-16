@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import { useRouter, usePathname } from 'next/navigation';
+import { AiOperationsProvider } from '@/lib/AiOperationsContext';
 import Link from 'next/link';
 import {
     LayoutDashboard,
@@ -186,9 +187,11 @@ export default function DashboardLayout({ children }) {
                         </div>
                     </div>
                 </header>
-                <div className={styles.pageContent}>
-                    {children}
-                </div>
+                <AiOperationsProvider>
+                    <div className={styles.pageContent}>
+                        {children}
+                    </div>
+                </AiOperationsProvider>
             </main>
         </div>
     );

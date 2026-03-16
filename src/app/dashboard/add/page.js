@@ -61,6 +61,17 @@ export default function AddGroceriesPage() {
     const [recommendations, setRecommendations] = useState(null);
     const [showFoodPicker, setShowFoodPicker] = useState(null);
     const [currency, setCurrency] = useState('USD');
+    const [nonFoodItems, setNonFoodItems] = useState([]);
+
+    // Receipt upload state
+    const [receiptImage, setReceiptImage] = useState(null);
+    const [receiptPreview, setReceiptPreview] = useState(null);
+    const [ocrProgress, setOcrProgress] = useState(0);
+    const [ocrStatus, setOcrStatus] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [ocrText, setOcrText] = useState('');
+    const [extractedItems, setExtractedItems] = useState([]);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         const fetchCurrency = async () => {
@@ -90,6 +101,19 @@ export default function AddGroceriesPage() {
                         setSessionName(parsed.sessionName || '');
                         setStoreName(parsed.storeName || '');
                         setItems(parsed.items || [{ id: 1, name: '', quantity: 1, unit: 'piece', price: 0, category: 'Other' }]);
+                        // Restore analysis results if they were saved
+                        if (parsed.analyzed) {
+                            setAnalyzed(true);
+                            if (parsed.nutritionResults) setNutritionResults(parsed.nutritionResults);
+                            if (parsed.aiSummary) setAiSummary(parsed.aiSummary);
+                            if (parsed.recommendations) setRecommendations(parsed.recommendations);
+                        }
+                        // Restore receipt scan results
+                        if (parsed.activeTab) setActiveTab(parsed.activeTab);
+                        if (parsed.extractedItems?.length) setExtractedItems(parsed.extractedItems);
+                        if (parsed.nonFoodItems?.length) setNonFoodItems(parsed.nonFoodItems);
+                        if (parsed.ocrText) setOcrText(parsed.ocrText);
+                        if (parsed.ocrStatus) setOcrStatus(parsed.ocrStatus);
                     } else {
                         localStorage.removeItem('foodlimit_grocery_draft');
                     }
@@ -103,37 +127,69 @@ export default function AddGroceriesPage() {
         }
     }, []);
 
-    // 💾 AUTO-SAVE DRAFT - Save every 30 seconds
+    // 💾 AUTO-SAVE DRAFT - Build draft object (shared by interval + beforeunload)
+    const buildDraft = useCallback(() => {
+        const hasContent = sessionName || storeName || items.some(i => i.name.trim()) ||
+            extractedItems.length > 0 || nonFoodItems.length > 0;
+        if (!hasContent) return null;
+
+        const draft = {
+            sessionName,
+            storeName,
+            items,
+            activeTab,
+            timestamp: Date.now(),
+        };
+        // Include analysis results if available
+        if (analyzed) {
+            draft.analyzed = true;
+            draft.nutritionResults = nutritionResults;
+            draft.aiSummary = aiSummary;
+            draft.recommendations = recommendations;
+        }
+        // Include receipt scan results
+        if (extractedItems.length > 0) draft.extractedItems = extractedItems;
+        if (nonFoodItems.length > 0) draft.nonFoodItems = nonFoodItems;
+        if (ocrText) draft.ocrText = ocrText;
+        if (ocrStatus) draft.ocrStatus = ocrStatus;
+        return draft;
+    }, [sessionName, storeName, items, activeTab, analyzed, nutritionResults, aiSummary, recommendations, extractedItems, nonFoodItems, ocrText, ocrStatus]);
+
+    // 💾 AUTO-SAVE DRAFT - Save on every meaningful state change (debounced)
     useEffect(() => {
-        const autoSaveInterval = setInterval(() => {
-            // Only save if there's actual data
-            if (sessionName || storeName || items.some(i => i.name.trim())) {
-                try {
-                    localStorage.setItem('foodlimit_grocery_draft', JSON.stringify({
-                        sessionName,
-                        storeName,
-                        items,
-                        timestamp: Date.now(),
-                    }));
-                    console.log('💾 Auto-saved draft');
-                } catch (err) {
-                    console.error('Failed to auto-save:', err);
+        const timer = setTimeout(() => {
+            try {
+                const draft = buildDraft();
+                if (draft) {
+                    localStorage.setItem('foodlimit_grocery_draft', JSON.stringify(draft));
                 }
+            } catch (err) {
+                console.error('Failed to auto-save:', err);
             }
-        }, 30000); // Every 30 seconds
+        }, 500); // debounce 500ms
+        return () => clearTimeout(timer);
+    }, [buildDraft]);
 
-        return () => clearInterval(autoSaveInterval);
-    }, [sessionName, storeName, items]);
+    // 💾 AUTO-SAVE DRAFT - Save on browser close AND SPA navigation (component unmount)
+    const buildDraftRef = useRef(buildDraft);
+    buildDraftRef.current = buildDraft;
 
-    // Receipt upload state
-    const [receiptImage, setReceiptImage] = useState(null);
-    const [receiptPreview, setReceiptPreview] = useState(null);
-    const [ocrProgress, setOcrProgress] = useState(0);
-    const [ocrStatus, setOcrStatus] = useState('');
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [ocrText, setOcrText] = useState('');
-    const [extractedItems, setExtractedItems] = useState([]);
-    const fileInputRef = useRef(null);
+    useEffect(() => {
+        const saveOnLeave = () => {
+            try {
+                const draft = buildDraftRef.current();
+                if (draft) {
+                    localStorage.setItem('foodlimit_grocery_draft', JSON.stringify(draft));
+                }
+            } catch {}
+        };
+        window.addEventListener('beforeunload', saveOnLeave);
+        return () => {
+            window.removeEventListener('beforeunload', saveOnLeave);
+            // Save when component unmounts (i.e. user navigates to another page)
+            saveOnLeave();
+        };
+    }, []);
 
     const allFoods = getAllFoods();
 
@@ -280,10 +336,11 @@ export default function AddGroceriesPage() {
             if (parsed.error) {
                 setError(parsed.error);
                 setExtractedItems([]);
+                setNonFoodItems([]);
                 setOcrStatus('Could not read receipt');
             } else {
-                // Map AI response to our item format
-                const items = (parsed.items || []).map((item, idx) => ({
+                // Map food items
+                const foodItems = (parsed.items || []).filter(i => i.is_food !== false).map((item, idx) => ({
                     id: Date.now() + idx,
                     name: item.name || 'Unknown Item',
                     quantity: item.quantity || 1,
@@ -292,8 +349,19 @@ export default function AddGroceriesPage() {
                     category: item.category || 'Other',
                 }));
 
-                setExtractedItems(items);
-                setOcrStatus(`✨ ${providerLabel} found ${items.length} item(s)`);
+                // Map non-food items
+                const nonFood = (parsed.non_food_items || []).map((item, idx) => ({
+                    id: Date.now() + 1000 + idx,
+                    name: item.name || 'Unknown Item',
+                    quantity: item.quantity || 1,
+                    price: item.price || 0,
+                    category: item.category || 'Household',
+                }));
+
+                setExtractedItems(foodItems);
+                setNonFoodItems(nonFood);
+                const nfLabel = nonFood.length > 0 ? ` · ${nonFood.length} non-food skipped` : '';
+                setOcrStatus(`✨ ${providerLabel} found ${foodItems.length} food item(s)${nfLabel}`);
 
                 if (parsed.store_name) {
                     setStoreName(parsed.store_name);
@@ -476,6 +544,21 @@ export default function AddGroceriesPage() {
                 setAnalyzeStepText('Done!');
                 setAnalyzed(true);
                 setAnalyzing(false);
+
+                // Immediately save draft with analysis results
+                try {
+                    localStorage.setItem('foodlimit_grocery_draft', JSON.stringify({
+                        sessionName, storeName, items, timestamp: Date.now(),
+                        analyzed: true, nutritionResults: results, aiSummary: {
+                            total_calories: totalCal, total_protein_g: totalPro,
+                            total_carbs_g: totalCarbs, total_fat_g: totalFat,
+                            total_sugar_g: totalSugar,
+                            total_salt_g: Math.round((totalSodium * 2.5 / 1000) * 10) / 10,
+                            overall_health_score: Math.round(results.reduce((s, r) => s + (r.nutrition?.health_score || 70), 0) / results.length),
+                            diet_assessment: 'Data from local nutrition database',
+                        },
+                    }));
+                } catch {}
                 return;
             }
 
@@ -555,16 +638,27 @@ export default function AddGroceriesPage() {
             // Process recommendations
             setAnalyzeStep(3);
             setAnalyzeStepText('Finding healthier alternatives...');
+            let recs = null;
             if (recommendationsResponse && recommendationsResponse.ok) {
                 const recsData = await recommendationsResponse.json();
                 if (recsData.data) {
-                    setRecommendations(recsData.data.recommendations);
+                    recs = recsData.data.recommendations;
+                    setRecommendations(recs);
                 }
             }
 
             setAnalyzeStep(4);
             setAnalyzeStepText('Done!');
             setAnalyzed(true);
+
+            // Immediately save draft with analysis results
+            try {
+                localStorage.setItem('foodlimit_grocery_draft', JSON.stringify({
+                    sessionName, storeName, items, timestamp: Date.now(),
+                    analyzed: true, nutritionResults: results, aiSummary: aiData.summary,
+                    recommendations: recs,
+                }));
+            } catch {}
 
         } catch (err) {
             setError('Analysis failed: ' + (err.message || 'Unknown error'));
@@ -664,11 +758,18 @@ export default function AddGroceriesPage() {
                 .filter(Boolean); // Remove null entries
 
             if (nutritionDataArray.length > 0) {
+                console.log(`💾 Inserting nutrition_data for ${nutritionDataArray.length} items`, nutritionDataArray[0]);
                 const { error: nutritionErr } = await supabase
                     .from('nutrition_data')
                     .insert(nutritionDataArray);
 
-                if (nutritionErr) throw nutritionErr;
+                if (nutritionErr) {
+                    console.error('❌ Nutrition insert failed:', nutritionErr);
+                    // Don't throw — session and items are already saved
+                    // Nutrition will be backfilled on dashboard load
+                }
+            } else {
+                console.warn('⚠️ No nutrition data to insert — items may not have been analyzed');
             }
 
             // 💾 Clear auto-saved draft on successful save
@@ -879,12 +980,15 @@ export default function AddGroceriesPage() {
 
                                     {extractedItems.length > 0 && (
                                         <>
-                                            <h4 style={{ marginTop: 'var(--space-md)', marginBottom: 'var(--space-sm)' }}>🛒 Detected Items</h4>
+                                            <h4 style={{ marginTop: 'var(--space-md)', marginBottom: 'var(--space-sm)' }}>
+                                                🛒 Food Items ({extractedItems.length})
+                                            </h4>
                                             <div className={styles.extractedList}>
                                                 {extractedItems.map((item, idx) => (
                                                     <div key={item.id} className={styles.extractedItem}>
                                                         <span className={styles.extractedNum}>{idx + 1}</span>
                                                         <span className={styles.extractedName}>{item.name}</span>
+                                                        <span className={styles.extractedCategory}>{item.category}</span>
                                                         {item.price > 0 && (
                                                             <span className={styles.extractedPrice}>{formatCurrency(item.price, currency)}</span>
                                                         )}
@@ -892,9 +996,33 @@ export default function AddGroceriesPage() {
                                                 ))}
                                             </div>
 
+                                            {nonFoodItems.length > 0 && (
+                                                <div className={styles.nonFoodSection}>
+                                                    <h4 className={styles.nonFoodHeader}>
+                                                        <span>🚫 Non-Food Items ({nonFoodItems.length})</span>
+                                                        <span className={styles.nonFoodBadge}>Excluded from nutrition analysis</span>
+                                                    </h4>
+                                                    <div className={styles.extractedList}>
+                                                        {nonFoodItems.map((item, idx) => (
+                                                            <div key={item.id} className={`${styles.extractedItem} ${styles.nonFoodItem}`}>
+                                                                <span className={styles.nonFoodNum}>{idx + 1}</span>
+                                                                <span className={styles.extractedName}>{item.name}</span>
+                                                                <span className={styles.nonFoodCategory}>{item.category}</span>
+                                                                {item.price > 0 && (
+                                                                    <span className={styles.nonFoodPrice}>{formatCurrency(item.price, currency)}</span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <div className={styles.nonFoodTotal}>
+                                                        Non-food total: {formatCurrency(nonFoodItems.reduce((s, i) => s + (i.price || 0), 0), currency)}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <button onClick={useExtractedItems} className="btn-primary" style={{ width: '100%', padding: '16px', marginTop: 'var(--space-md)' }}>
                                                 <ShoppingCart size={18} />
-                                                Use These Items → Analyze Nutrition
+                                                Use Food Items → Analyze Nutrition
                                             </button>
                                         </>
                                     )}

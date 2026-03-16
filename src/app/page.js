@@ -13,6 +13,7 @@ import {
   ShoppingCart,
   Heart,
   CheckCircle2,
+  Download,
 } from 'lucide-react';
 import styles from './home.module.css';
 
@@ -85,6 +86,10 @@ export default function HomePage() {
           <span>FoodLimit</span>
         </Link>
         <div className={styles.navLinks}>
+          <Link href="/download" className={styles.navLink} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Download size={16} />
+            Download APK
+          </Link>
           <Link href="/login" className={styles.navLink}>Sign In</Link>
           <Link href="/register" className="btn-primary" style={{ padding: '10px 24px' }}>
             Get Started
@@ -110,6 +115,10 @@ export default function HomePage() {
           <Link href="/register" className="btn-primary" style={{ padding: '16px 36px', fontSize: '1rem' }}>
             Start Tracking Free
             <ArrowRight size={18} />
+          </Link>
+          <Link href="/download" className={styles.downloadBtn}>
+            <Download size={18} />
+            Download Android APK
           </Link>
         </div>
 

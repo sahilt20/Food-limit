@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
+import { useAiOperations } from '@/lib/AiOperationsContext';
 import { ChefHat, Search, Loader, Clock, Flame, Apple, CheckCircle2, AlertCircle } from 'lucide-react';
 import styles from './recipes.module.css';
 
@@ -10,12 +11,17 @@ export default function RecipesPage() {
     const [selectedItems, setSelectedItems] = useState([]);
     const [dietary, setDietary] = useState('Any');
     const [cuisine, setCuisine] = useState('Any');
-    
+
     const [recipes, setRecipes] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [fetchingPantry, setFetchingPantry] = useState(true);
+    const [progress, setProgress] = useState(0);
+    const [progressText, setProgressText] = useState('');
 
+    const { startOperation, getCompleted, clearCompleted, isRunning } = useAiOperations();
+
+    // Load pantry items
     useEffect(() => {
         const fetchPantry = async () => {
             try {
@@ -26,7 +32,7 @@ export default function RecipesPage() {
                         .from('grocery_sessions')
                         .select('grocery_items(name)')
                         .order('session_date', { ascending: false })
-                        .limit(5); // Get items from last 5 trips
+                        .limit(5);
 
                     if (data) {
                         const items = new Set();
@@ -46,6 +52,45 @@ export default function RecipesPage() {
         };
         fetchPantry();
     }, []);
+
+    // Load saved recipes from DB + check context for background-completed results
+    useEffect(() => {
+        // Check context first (fresher data from background op)
+        const completed = getCompleted('recipes');
+        if (completed?.content?.recipes) {
+            setRecipes(completed.content.recipes);
+            clearCompleted('recipes');
+            return;
+        }
+
+        // Fall back to DB
+        const loadSaved = async () => {
+            try {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const { data } = await supabase
+                    .from('ai_generated_content')
+                    .select('content, input_params, updated_at')
+                    .eq('user_id', user.id)
+                    .eq('content_type', 'recipes')
+                    .single();
+                if (data?.content?.recipes) {
+                    setRecipes(data.content.recipes);
+                }
+            } catch {}
+        };
+        loadSaved();
+    }, [getCompleted, clearCompleted]);
+
+    // If a background op is running, show loading state
+    useEffect(() => {
+        if (isRunning('recipes') && !loading) {
+            setLoading(true);
+            setProgressText('Generating recipes in background...');
+            setProgress(50);
+        }
+    }, [isRunning, loading]);
 
     const toggleItem = (item) => {
         if (selectedItems.includes(item)) {
@@ -67,26 +112,45 @@ export default function RecipesPage() {
         setLoading(true);
         setError('');
         setRecipes(null);
+        setProgress(10);
+        setProgressText('Selecting ingredients...');
+
+        const progressInterval = setInterval(() => {
+            setProgress(prev => {
+                if (prev >= 85) return 85;
+                const increment = prev < 40 ? Math.random() * 15 : Math.random() * 8;
+                return Math.min(prev + increment, 85);
+            });
+        }, 700);
+
+        const inputParams = { ingredients: selectedItems, dietary, cuisine };
 
         try {
-            const response = await fetch('/api/generate-recipes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ingredients: selectedItems, dietary, cuisine }),
-            });
-            const data = await response.json();
+            setProgressText('Consulting the AI chef...');
+            const result = await startOperation('recipes', async () => {
+                const response = await fetch('/api/generate-recipes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(inputParams),
+                });
+                const data = await response.json();
+                if (data.data?.recipes) {
+                    return { data: data.data, provider: data.provider };
+                }
+                throw new Error(data.error || 'Failed to generate recipes');
+            }, inputParams);
 
-            if (data.data?.recipes) {
-                setRecipes(data.data.recipes);
-            } else if (data.error) {
-                setError(data.error);
-            } else {
-                setError("Failed to generate recipes. The AI returned an unexpected format.");
+            setProgress(95);
+            if (result?.data?.recipes) {
+                setRecipes(result.data.recipes);
             }
         } catch (err) {
-            setError("Network error. Please try again.");
+            setError(err.message || "Network error. Please try again.");
         } finally {
-            setLoading(false);
+            clearInterval(progressInterval);
+            setProgress(100);
+            setProgressText('Done!');
+            setTimeout(() => { setLoading(false); setProgress(0); }, 400);
         }
     };
 
@@ -105,7 +169,7 @@ export default function RecipesPage() {
                 {/* Left Column: Controls */}
                 <div style={{ background: 'var(--bg-card)', padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', height: 'fit-content' }}>
                     <h3 style={{ fontSize: '1.2rem', marginBottom: 'var(--space-md)', color: 'var(--text-primary)' }}>Preferences</h3>
-                    
+
                     <div style={{ marginBottom: 'var(--space-md)' }}>
                         <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>Dietary Restriction</label>
                         <select className="input-field" value={dietary} onChange={e => setDietary(e.target.value)}>
@@ -167,9 +231,9 @@ export default function RecipesPage() {
                         )}
                     </div>
 
-                    <button 
-                        onClick={generateRecipes} 
-                        className="btn-primary" 
+                    <button
+                        onClick={generateRecipes}
+                        className="btn-primary"
                         style={{ width: '100%', padding: '14px' }}
                         disabled={loading || selectedItems.length === 0}
                     >
@@ -189,10 +253,24 @@ export default function RecipesPage() {
                     )}
 
                     {loading && (
-                        <div style={{ textAlign: 'center', padding: '100px 20px' }}>
-                            <Loader size={48} className="spin" style={{ color: 'var(--accent-orange)', marginBottom: 'var(--space-md)' }} />
-                            <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>Consulting the Chef...</h3>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Analyzing flavor profiles and nutritional data</p>
+                        <div style={{ textAlign: 'center', padding: '80px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+                            <ChefHat size={40} style={{ color: 'var(--accent-orange)', marginBottom: 'var(--space-md)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                            <h3 style={{ color: 'var(--text-primary)', margin: '0 0 8px 0' }}>{progressText}</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: 'var(--space-lg)' }}>Analyzing flavor profiles and nutritional data</p>
+                            <div style={{ maxWidth: 360, margin: '0 auto' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.78rem' }}>
+                                    <span style={{ color: 'var(--text-tertiary)' }}>Progress</span>
+                                    <span style={{ color: 'var(--accent-orange)', fontWeight: 700 }}>{Math.round(progress)}%</span>
+                                </div>
+                                <div style={{ height: 8, background: 'var(--bg-glass)', borderRadius: 99, overflow: 'hidden' }}>
+                                    <div style={{
+                                        height: '100%', borderRadius: 99,
+                                        background: 'linear-gradient(90deg, var(--accent-orange), var(--accent-yellow))',
+                                        width: `${progress}%`,
+                                        transition: 'width 0.5s ease-out',
+                                    }} />
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -207,7 +285,7 @@ export default function RecipesPage() {
                                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: '0 0 16px 0' }}>{recipe.description}</p>
                                             </div>
                                         </div>
-                                        
+
                                         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-card-hover)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                                                 <Clock size={14} /> Prep: {recipe.prep_time_mins}m | Cook: {recipe.cook_time_mins}m

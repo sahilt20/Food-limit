@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
-import { NUTRIENT_INFO, DAILY_VALUES } from '@/lib/nutritionDB';
+import { NUTRIENT_INFO, DAILY_VALUES, lookupNutrition } from '@/lib/nutritionDB';
 import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 import Link from 'next/link';
 import {
@@ -26,6 +26,7 @@ import {
     DollarSign,
     Leaf,
     Timer,
+    Sparkles,
 } from 'lucide-react';
 import { Doughnut, Line, Bar } from 'react-chartjs-2';
 import {
@@ -104,6 +105,37 @@ export default function DashboardPage() {
                     setFamilySize(fSize);
                     
                     if (sessionData?.length) {
+                        // Backfill missing nutrition_data from local DB
+                        const itemsToBackfill = [];
+                        sessionData.forEach(sess => {
+                            (sess.grocery_items || []).forEach(item => {
+                                const nd = Array.isArray(item.nutrition_data)
+                                    ? (item.nutrition_data.length > 0 ? item.nutrition_data[0] : null)
+                                    : item.nutrition_data;
+                                if (!nd && item.name) {
+                                    const localNut = lookupNutrition(item.name, (item.quantity || 1) * 150);
+                                    if (localNut) {
+                                        const { category, ...nutData } = localNut;
+                                        itemsToBackfill.push({ item_id: item.id, ...nutData });
+                                        // Patch in-memory so charts render immediately
+                                        item.nutrition_data = nutData;
+                                    }
+                                }
+                            });
+                        });
+
+                        // Persist backfilled nutrition to DB in background
+                        if (itemsToBackfill.length > 0) {
+                            console.log(`🔧 Backfilling nutrition_data for ${itemsToBackfill.length} items`);
+                            supabase
+                                .from('nutrition_data')
+                                .upsert(itemsToBackfill, { onConflict: 'item_id' })
+                                .then(({ error: bfErr }) => {
+                                    if (bfErr) console.error('Backfill error:', bfErr);
+                                    else console.log('✅ Nutrition backfill complete');
+                                });
+                        }
+
                         setAllSessions(sessionData);
                     } else {
                         setAllSessions([]);
@@ -263,15 +295,19 @@ export default function DashboardPage() {
     const avgCalPerSession = sessions.length ? Math.round(totalCalories / sessions.length) : 0;
 
     // Aggregations
-    const aggregatedMacros = { protein: 0, carbs: 0, fat: 0, sugar: 0, salt: 0 };
+    const aggregatedMacros = { protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, salt: 0 };
     const aggregatedSpending = {};
     const storeAnalytics = {};
     const foodAnalytics = {};
     
     const aggregatedMicroScores = {
         vitamin_c_mg: 0, calcium_mg: 0, iron_mg: 0, potassium_mg: 0,
-        vitamin_a_mcg: 0, vitamin_d_mcg: 0, zinc_mg: 0, magnesium_mg: 0,
+        vitamin_a_mcg: 0, vitamin_d_mcg: 0, vitamin_b12_mcg: 0,
+        vitamin_e_mg: 0, vitamin_k_mcg: 0,
+        zinc_mg: 0, magnesium_mg: 0, folate_mcg: 0, omega_3_mg: 0,
     };
+    let itemsWithNutrition = 0;
+    let itemsWithoutNutrition = 0;
     
     // Group calories by day for trend (last 7 days regardless of filter, or align with filter if possible. We'll stick to a simple 7-point array for demo structure).
     const weeklyCals = new Array(7).fill(0);
@@ -305,37 +341,60 @@ export default function DashboardPage() {
             foodAnalytics[foodName].spent += (item.price || 0);
             foodAnalytics[foodName].count += 1;
 
-            // Nutrition
-            const nut = (item.nutrition_data && item.nutrition_data.length > 0) ? item.nutrition_data[0] : null;
+            // Nutrition — Supabase returns a single object (not array) for unique FK joins
+            const nut = Array.isArray(item.nutrition_data)
+                ? (item.nutrition_data.length > 0 ? item.nutrition_data[0] : null)
+                : (item.nutrition_data || null);
             if (nut) {
+                itemsWithNutrition++;
                 aggregatedMacros.protein += (nut.protein_g || 0);
                 aggregatedMacros.carbs += (nut.carbs_g || 0);
                 aggregatedMacros.fat += (nut.fat_g || 0);
+                aggregatedMacros.fiber += (nut.fiber_g || 0);
                 aggregatedMacros.sugar += (nut.sugar_g || 0);
                 aggregatedMacros.salt += ((nut.sodium_mg || 0) * 2.5 / 1000); // NaCl = Na × 2.5
 
                 Object.keys(aggregatedMicroScores).forEach(key => {
                     if (nut[key]) {
-                        // Calculate % roughly based on DAILY_VALUES if exists, but since we are summing over multiple days, we just sum raw values for now and normalize below.
                         aggregatedMicroScores[key] += (nut[key] || 0);
                     }
                 });
+            } else {
+                itemsWithoutNutrition++;
             }
         });
     });
 
     // Normalize scores and macros to get Daily Average
-    const daysInPeriod = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : timeRange === 'year' ? 365 : Math.max(1, sessions.length * 3);
-    
-    // Normalize macros
+    // Use actual unique shopping days (not calendar days) for more accurate averages
+    const uniqueShoppingDays = new Set(sessions.map(s => s.session_date?.split('T')[0])).size;
+    // Estimate consumption days: groceries from N shopping trips typically last ~3-5 days each
+    // Use the actual date range spanned by sessions, with a minimum of the unique days count
+    let daysInPeriod;
+    if (sessions.length >= 2) {
+        const dates = sessions.map(s => new Date(s.session_date)).sort((a, b) => a - b);
+        const daySpan = Math.max(1, Math.ceil((dates[dates.length - 1] - dates[0]) / (1000 * 60 * 60 * 24)));
+        daysInPeriod = Math.max(daySpan, uniqueShoppingDays);
+    } else {
+        // Single session: assume groceries cover ~5 days of meals
+        daysInPeriod = Math.max(1, uniqueShoppingDays * 5);
+    }
+    // Scale by family size for per-person values
+    const householdDivisor = daysInPeriod * familySize;
+
+    // Normalize macros to daily per-person average
     Object.keys(aggregatedMacros).forEach(key => {
-        aggregatedMacros[key] = (aggregatedMacros[key] / daysInPeriod) || 0;
+        aggregatedMacros[key] = (aggregatedMacros[key] / householdDivisor) || 0;
     });
 
     Object.keys(aggregatedMicroScores).forEach(key => {
-        const dv = DAILY_VALUES?.[key] || 1000; // fallback DV
-        const avgDailyIntake = aggregatedMicroScores[key] / daysInPeriod;
-        aggregatedMicroScores[key] = Math.min(100, Math.round((avgDailyIntake / dv) * 100)) || 0;
+        const dv = DAILY_VALUES?.[key];
+        if (!dv) {
+            aggregatedMicroScores[key] = 0;
+            return;
+        }
+        const avgDailyIntake = aggregatedMicroScores[key] / householdDivisor;
+        aggregatedMicroScores[key] = Math.min(150, Math.round((avgDailyIntake / dv) * 100)) || 0;
     });
 
     // Formatting Store Array
@@ -352,19 +411,56 @@ export default function DashboardPage() {
         .sort((a, b) => b.count - a.count)
         .slice(0, 10); // Display top 10 most frequent foods
 
+    // Use AI macro data when available, fall back to local aggregation
+    const currentInsights = aiInsights[insightsPeriod];
+    const aiMacro = currentInsights?.macro_breakdown;
+    const aiMicro = currentInsights?.micronutrient_coverage;
+
+    const displayMacros = {
+        protein: aiMacro?.daily_avg_protein_g ?? aggregatedMacros.protein,
+        carbs: aiMacro?.daily_avg_carbs_g ?? aggregatedMacros.carbs,
+        fat: aiMacro?.daily_avg_fat_g ?? aggregatedMacros.fat,
+        fiber: aiMacro?.daily_avg_fiber_g ?? aggregatedMacros.fiber,
+        sugar: aiMacro?.daily_avg_sugar_g ?? aggregatedMacros.sugar,
+        salt: aiMacro?.daily_avg_salt_g ?? aggregatedMacros.salt,
+    };
+
+    const displayMicro = aiMicro ? {
+        vitamin_c_mg: aiMicro.vitamin_c_mg ?? aggregatedMicroScores.vitamin_c_mg,
+        calcium_mg: aiMicro.calcium_mg ?? aggregatedMicroScores.calcium_mg,
+        iron_mg: aiMicro.iron_mg ?? aggregatedMicroScores.iron_mg,
+        potassium_mg: aiMicro.potassium_mg ?? aggregatedMicroScores.potassium_mg,
+        vitamin_a_mcg: aiMicro.vitamin_a_mcg ?? aggregatedMicroScores.vitamin_a_mcg,
+        vitamin_d_mcg: aiMicro.vitamin_d_mcg ?? aggregatedMicroScores.vitamin_d_mcg,
+        vitamin_b12_mcg: aiMicro.vitamin_b12_mcg ?? aggregatedMicroScores.vitamin_b12_mcg,
+        vitamin_e_mg: aiMicro.vitamin_e_mg ?? aggregatedMicroScores.vitamin_e_mg,
+        vitamin_k_mcg: aiMicro.vitamin_k_mcg ?? aggregatedMicroScores.vitamin_k_mcg,
+        zinc_mg: aiMicro.zinc_mg ?? aggregatedMicroScores.zinc_mg,
+        magnesium_mg: aiMicro.magnesium_mg ?? aggregatedMicroScores.magnesium_mg,
+        folate_mcg: aiMicro.folate_mcg ?? aggregatedMicroScores.folate_mcg,
+        omega_3_mg: aiMicro.omega_3_mg ?? aggregatedMicroScores.omega_3_mg,
+        fiber_g: aiMicro.fiber_g ?? Math.min(150, Math.round((aggregatedMacros.fiber / (DAILY_VALUES?.fiber_g || 25)) * 100)),
+    } : {
+        ...aggregatedMicroScores,
+        fiber_g: Math.min(150, Math.round(((aggregatedMacros.fiber) / (DAILY_VALUES?.fiber_g || 25)) * 100)),
+    };
+
+    const isAiEnhanced = !!aiMacro;
+
     // Chart configurations
     const macroData = {
-        labels: ['Protein', 'Carbs', 'Fat', 'Sugar', 'Salt'],
+        labels: ['Protein', 'Carbs', 'Fat', 'Fiber', 'Sugar', 'Salt'],
         datasets: [{
             data: [
-                Math.round(aggregatedMacros.protein), 
-                Math.round(aggregatedMacros.carbs), 
-                Math.round(aggregatedMacros.fat), 
-                Math.round(aggregatedMacros.sugar), 
-                Math.round(aggregatedMacros.salt * 10) // *10 just for visual balance on radar/doughnut
+                Math.round(displayMacros.protein),
+                Math.round(displayMacros.carbs),
+                Math.round(displayMacros.fat),
+                Math.round(displayMacros.fiber),
+                Math.round(displayMacros.sugar),
+                Math.round(displayMacros.salt * 10) // *10 just for visual balance on doughnut
             ],
-            backgroundColor: ['#4d8dff', '#fbbf24', '#ff6b9d', '#f472b6', '#fb923c'],
-            borderColor: ['rgba(77,141,255,0.3)', 'rgba(251,191,36,0.3)', 'rgba(255,107,157,0.3)', 'rgba(244,114,182,0.3)', 'rgba(251,146,60,0.3)'],
+            backgroundColor: ['#4d8dff', '#fbbf24', '#ff6b9d', '#00d4aa', '#f472b6', '#fb923c'],
+            borderColor: ['rgba(77,141,255,0.3)', 'rgba(251,191,36,0.3)', 'rgba(255,107,157,0.3)', 'rgba(0,212,170,0.3)', 'rgba(244,114,182,0.3)', 'rgba(251,146,60,0.3)'],
             borderWidth: 2,
             hoverOffset: 8,
         }],
@@ -612,25 +708,37 @@ export default function DashboardPage() {
                 <div className={`${styles.chartCard} animate-fadeInUp stagger-3`}>
                     <div className={styles.chartHeader}>
                         <h3>Macro Breakdown</h3>
-                        <span className={styles.chartBadge}>Daily Intake</span>
+                        <span className={styles.chartBadge}>{isAiEnhanced ? 'AI-Enhanced' : 'Daily Avg'}</span>
                     </div>
+                    {isAiEnhanced && aiMacro?.estimation_note && (
+                        <p style={{ fontSize: '0.75rem', color: 'var(--accent-green)', margin: '0 0 var(--space-sm) 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Sparkles size={12} /> {aiMacro.estimation_note}
+                        </p>
+                    )}
+                    {!isAiEnhanced && itemsWithoutNutrition > 0 && (
+                        <p style={{ fontSize: '0.75rem', color: 'var(--accent-yellow)', margin: '0 0 var(--space-sm) 0' }}>
+                            {itemsWithoutNutrition} item(s) missing nutrition data — generate AI Insights for accurate results
+                        </p>
+                    )}
                     <div className={styles.macroLayout}>
                         <div className={styles.chartBodyDoughnut}>
                             <Doughnut data={macroData} options={doughnutOptions} />
                         </div>
                         <div className={styles.macroBreakdown}>
                             {[
-                                { label: 'Protein', value: Math.round(aggregatedMacros.protein), max: 150, color: '#4d8dff', unit: 'g' },
-                                { label: 'Carbs', value: Math.round(aggregatedMacros.carbs), max: 300, color: '#fbbf24', unit: 'g' },
-                                { label: 'Fat', value: Math.round(aggregatedMacros.fat), max: 70, color: '#ff6b9d', unit: 'g' },
-                                { label: 'Sugar', value: Math.round(aggregatedMacros.sugar), max: 50, color: '#f472b6', unit: 'g' },
-                                { label: 'Salt', value: Math.round(aggregatedMacros.salt), max: 6, color: '#fb923c', unit: 'g' },
+                                { label: 'Protein', value: Math.round(displayMacros.protein), max: 150, color: '#4d8dff', unit: 'g' },
+                                { label: 'Carbs', value: Math.round(displayMacros.carbs), max: 300, color: '#fbbf24', unit: 'g' },
+                                { label: 'Fat', value: Math.round(displayMacros.fat), max: 70, color: '#ff6b9d', unit: 'g' },
+                                { label: 'Fiber', value: Math.round(displayMacros.fiber), max: 25, color: '#00d4aa', unit: 'g' },
+                                { label: 'Sugar', value: Math.round(displayMacros.sugar), max: 50, color: '#f472b6', unit: 'g' },
+                                { label: 'Salt', value: Math.round(displayMacros.salt * 10) / 10, max: 6, color: '#fb923c', unit: 'g' },
                             ].map(macro => (
                                 <div key={macro.label} className={styles.macroStatRow}>
                                     <div className={styles.macroStatHeader}>
                                         <span className={styles.macroStatLabel}>{macro.label}</span>
                                         <span className={styles.macroStatValue} style={{ color: macro.color }}>
                                             {macro.value}{macro.unit}
+                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', marginLeft: 4 }}>/ {macro.max}{macro.unit}</span>
                                         </span>
                                     </div>
                                     <div className={styles.macroBarBg}>
@@ -660,19 +768,25 @@ export default function DashboardPage() {
                 <div className={`${styles.chartCard} animate-fadeInUp stagger-5`}>
                     <div className={styles.chartHeader}>
                         <h3>Micronutrient Coverage</h3>
-                        <span className={styles.chartBadge}>% Daily Value</span>
+                        <span className={styles.chartBadge}>{isAiEnhanced ? 'AI-Enhanced % DV' : '% Daily Value'}</span>
                     </div>
+                    {!isAiEnhanced && itemsWithoutNutrition > 0 && (
+                        <p style={{ fontSize: '0.75rem', color: 'var(--accent-yellow)', margin: '0 0 var(--space-sm) 0' }}>
+                            {itemsWithoutNutrition} item(s) missing data — values may be underestimated
+                        </p>
+                    )}
                     <div className={styles.microGrid}>
-                        {Object.entries(aggregatedMicroScores).map(([key, value]) => (
+                        {Object.entries(displayMicro)
+                            .sort(([, a], [, b]) => b - a) // Sort by coverage descending
+                            .map(([key, value]) => (
                             <div key={key} className={styles.microItem}>
                                 <div className={styles.microInfo}>
                                     <span className={styles.microName}>
-                                        {key === 'vitamin_c_mg' ? 'Vitamin C' :
-                                         key === 'vitamin_a_mcg' ? 'Vitamin A' :
-                                         key === 'vitamin_d_mcg' ? 'Vitamin D' :
-                                         NUTRIENT_INFO[key]?.name || key.replace('_mg', '').replace('_mcg', '').replace(/_/g, ' ')}
+                                        {NUTRIENT_INFO[key]?.name || key.replace('_mg', '').replace('_mcg', '').replace('_g', '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                                     </span>
-                                    <span className={styles.microValue}>{value}%</span>
+                                    <span className={styles.microValue} style={{
+                                        color: value >= 80 ? 'var(--accent-green)' : value >= 50 ? 'var(--accent-yellow)' : 'var(--accent-red)',
+                                    }}>{value}%</span>
                                 </div>
                                 <div className={styles.microBarBg}>
                                     <div
@@ -1291,6 +1405,80 @@ export default function DashboardPage() {
                     </div>
                 )}
             </div>
+
+            {/* Healthier Alternatives from Sessions */}
+            {(() => {
+                // recommendations is saved as an array directly, or as {alternatives: [...]}
+                const sessionWithAlts = allSessions.find(s => {
+                    const recs = s.recommendations;
+                    if (!recs) return false;
+                    if (Array.isArray(recs) && recs.length > 0) return true;
+                    if (Array.isArray(recs?.alternatives) && recs.alternatives.length > 0) return true;
+                    return false;
+                });
+                if (!sessionWithAlts) return null;
+                const recs = sessionWithAlts.recommendations;
+                const alts = (Array.isArray(recs) ? recs : recs.alternatives).slice(0, 6);
+                return (
+                    <div className={`${styles.chartCard} animate-fadeInUp stagger-6`} style={{ marginBottom: 'var(--space-xl)' }}>
+                        <div className={styles.chartHeader}>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Leaf size={20} style={{ color: 'var(--accent-green)' }} /> Healthier Alternatives
+                            </h3>
+                            <span className={styles.chartBadge}>{sessionWithAlts.session_name || 'Latest Session'}</span>
+                        </div>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>
+                            AI-suggested swaps from your recent grocery trip
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-md)' }}>
+                            {alts.map((alt, i) => (
+                                <div key={i} style={{
+                                    padding: 'var(--space-md)',
+                                    background: 'var(--bg-glass)',
+                                    borderRadius: 'var(--radius-md)',
+                                    borderLeft: '3px solid var(--accent-green)',
+                                    display: 'flex', flexDirection: 'column', gap: 10,
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                        <span style={{ color: 'var(--text-secondary)', textDecoration: 'line-through', fontSize: '0.9rem' }}>
+                                            {alt.original_item || alt.original}
+                                        </span>
+                                        <ArrowUpRight size={14} style={{ color: 'var(--accent-green)', flexShrink: 0 }} />
+                                        <span style={{ color: 'var(--accent-green)', fontWeight: 600, fontSize: '0.9rem' }}>Healthier Swaps</span>
+                                    </div>
+                                    {alt.same_store_alternative && (
+                                        <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, borderLeft: '3px solid var(--accent-blue)' }}>
+                                            <p style={{ margin: 0, fontWeight: 600, fontSize: '0.8rem', color: 'var(--accent-blue)' }}>Same Store</p>
+                                            <p style={{ margin: '2px 0', fontWeight: 500, fontSize: '0.85rem' }}>{alt.same_store_alternative.name}</p>
+                                            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>{alt.same_store_alternative.reason}</p>
+                                            {alt.same_store_alternative.price_impact && (
+                                                <p style={{ margin: '2px 0 0 0', fontSize: '0.72rem', color: 'var(--accent-green)' }}>{alt.same_store_alternative.price_impact}</p>
+                                            )}
+                                        </div>
+                                    )}
+                                    {alt.best_health_alternative && (
+                                        <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, borderLeft: '3px solid var(--accent-green)' }}>
+                                            <p style={{ margin: 0, fontWeight: 600, fontSize: '0.8rem', color: 'var(--accent-green)' }}>Healthiest Option</p>
+                                            <p style={{ margin: '2px 0', fontWeight: 500, fontSize: '0.85rem' }}>{alt.best_health_alternative.name}</p>
+                                            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>{alt.best_health_alternative.reason}</p>
+                                            {alt.best_health_alternative.price_impact && (
+                                                <p style={{ margin: '2px 0 0 0', fontSize: '0.72rem', color: 'var(--accent-orange)' }}>{alt.best_health_alternative.price_impact}</p>
+                                            )}
+                                        </div>
+                                    )}
+                                    {/* Fallback for old format */}
+                                    {alt.suggestion && !alt.same_store_alternative && (
+                                        <div>
+                                            <span style={{ color: 'var(--accent-green)', fontWeight: 500, fontSize: '0.85rem' }}>{alt.suggestion}</span>
+                                            {alt.reason && <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '4px 0 0 0' }}>{alt.reason}</p>}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Recent Sessions */}
             <div className={`${styles.recentSection} animate-fadeInUp stagger-5`}>

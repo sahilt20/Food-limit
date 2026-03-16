@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
-import { 
-    Sparkles, 
-    ArrowRight, 
-    CheckCircle2, 
-    AlertCircle, 
+import { useAiOperations } from '@/lib/AiOperationsContext';
+import {
+    Sparkles,
+    ArrowRight,
+    CheckCircle2,
+    AlertCircle,
     Loader,
     Apple,
     TrendingUp,
@@ -21,6 +22,47 @@ export default function RecommendationsPage() {
     const [historyData, setHistoryData] = useState({ top: [], recent: [] });
     const [recommendations, setRecommendations] = useState(null);
     const [error, setError] = useState('');
+    const [progress, setProgress] = useState(0);
+    const [progressText, setProgressText] = useState('');
+
+    const { startOperation, getCompleted, clearCompleted, isRunning } = useAiOperations();
+
+    // Load saved recommendations from DB + check context for background-completed results
+    useEffect(() => {
+        const completed = getCompleted('recommendations');
+        if (completed?.content) {
+            setRecommendations(completed.content);
+            clearCompleted('recommendations');
+            return;
+        }
+
+        const loadSaved = async () => {
+            try {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const { data } = await supabase
+                    .from('ai_generated_content')
+                    .select('content, updated_at')
+                    .eq('user_id', user.id)
+                    .eq('content_type', 'recommendations')
+                    .single();
+                if (data?.content) {
+                    setRecommendations(data.content);
+                }
+            } catch {}
+        };
+        loadSaved();
+    }, [getCompleted, clearCompleted]);
+
+    // If a background op is running, show loading state
+    useEffect(() => {
+        if (isRunning('recommendations') && !generating) {
+            setGenerating(true);
+            setProgressText('Generating recommendations in background...');
+            setProgress(50);
+        }
+    }, [isRunning, generating]);
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -82,29 +124,45 @@ export default function RecommendationsPage() {
 
         setGenerating(true);
         setError('');
+        setProgress(10);
+        setProgressText('Scanning purchase history...');
+
+        const progressInterval = setInterval(() => {
+            setProgress(prev => {
+                if (prev >= 85) return 85;
+                const increment = prev < 40 ? Math.random() * 14 : Math.random() * 8;
+                return Math.min(prev + increment, 85);
+            });
+        }, 700);
+
+        const inputParams = { topItems: historyData.top, recentItems: historyData.recent };
 
         try {
-            const response = await fetch('/api/history-recommendations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    topItems: historyData.top,
-                    recentItems: historyData.recent
-                }),
-            });
-            const data = await response.json();
+            setProgressText('AI analyzing your buying patterns...');
+            const result = await startOperation('recommendations', async () => {
+                const response = await fetch('/api/history-recommendations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(inputParams),
+                });
+                const data = await response.json();
+                if (data.data) {
+                    return { data: data.data, provider: data.provider };
+                }
+                throw new Error(data.error || 'Failed to generate recommendations');
+            }, inputParams);
 
-            if (data.data) {
-                setRecommendations(data.data);
-            } else if (data.error) {
-                setError(data.error);
-            } else {
-                setError("Failed to generate recommendations. Please try again.");
+            setProgress(95);
+            if (result?.data) {
+                setRecommendations(result.data);
             }
         } catch (err) {
-            setError("Network error. Please try again.");
+            setError(err.message || "Network error. Please try again.");
         } finally {
-            setGenerating(false);
+            clearInterval(progressInterval);
+            setProgress(100);
+            setProgressText('Done!');
+            setTimeout(() => { setGenerating(false); setProgress(0); }, 400);
         }
     };
 
@@ -146,10 +204,24 @@ export default function RecommendationsPage() {
             )}
 
             {generating && (
-                <div style={{ textAlign: 'center', padding: '100px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
-                    <Loader size={48} className={styles.spin} style={{ color: 'var(--accent-pink)', marginBottom: 'var(--space-md)' }} />
-                    <h3 style={{ color: 'var(--text-primary)', margin: '0 0 12px 0', fontSize: '1.4rem' }}>Connecting to Culinary AI Engine...</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '400px', margin: '0 auto' }}>Scanning your top 30 most frequently purchased items to formulate the perfect health strategy.</p>
+                <div style={{ textAlign: 'center', padding: '80px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+                    <Sparkles size={40} style={{ color: 'var(--accent-pink)', marginBottom: 'var(--space-md)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                    <h3 style={{ color: 'var(--text-primary)', margin: '0 0 8px 0', fontSize: '1.3rem' }}>{progressText}</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '400px', margin: '0 auto var(--space-lg)' }}>Scanning your top {historyData.top.length} most frequently purchased items to formulate the perfect health strategy.</p>
+                    <div style={{ maxWidth: 400, margin: '0 auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.78rem' }}>
+                            <span style={{ color: 'var(--text-tertiary)' }}>Analyzing</span>
+                            <span style={{ color: 'var(--accent-pink)', fontWeight: 700 }}>{Math.round(progress)}%</span>
+                        </div>
+                        <div style={{ height: 8, background: 'var(--bg-glass)', borderRadius: 99, overflow: 'hidden' }}>
+                            <div style={{
+                                height: '100%', borderRadius: 99,
+                                background: 'linear-gradient(90deg, var(--accent-pink), var(--accent-blue))',
+                                width: `${progress}%`,
+                                transition: 'width 0.5s ease-out',
+                            }} />
+                        </div>
+                    </div>
                 </div>
             )}
 

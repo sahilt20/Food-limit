@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
+import { useAiOperations } from '@/lib/AiOperationsContext';
 import {
     CalendarDays, Loader, UtensilsCrossed, Clock, Flame,
     ShoppingBag, Lightbulb, ChevronDown, ChevronUp,
@@ -19,6 +20,49 @@ export default function MealPlannerPage() {
     const [error, setError] = useState('');
     const [fetchingPantry, setFetchingPantry] = useState(true);
     const [expandedDay, setExpandedDay] = useState(null);
+    const [progress, setProgress] = useState(0);
+    const [progressText, setProgressText] = useState('');
+
+    const { startOperation, getCompleted, clearCompleted, isRunning } = useAiOperations();
+
+    // Load saved meal plan from DB + check context for background-completed results
+    useEffect(() => {
+        const completed = getCompleted('meal_plan');
+        if (completed?.content) {
+            setMealPlan(completed.content);
+            setExpandedDay(0);
+            clearCompleted('meal_plan');
+            return;
+        }
+
+        const loadSaved = async () => {
+            try {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const { data } = await supabase
+                    .from('ai_generated_content')
+                    .select('content, updated_at')
+                    .eq('user_id', user.id)
+                    .eq('content_type', 'meal_plan')
+                    .single();
+                if (data?.content?.meal_plan) {
+                    setMealPlan(data.content);
+                    setExpandedDay(0);
+                }
+            } catch {}
+        };
+        loadSaved();
+    }, [getCompleted, clearCompleted]);
+
+    // If a background op is running, show loading state
+    useEffect(() => {
+        if (isRunning('meal_plan') && !loading) {
+            setLoading(true);
+            setProgressText('Generating meal plan in background...');
+            setProgress(50);
+        }
+    }, [isRunning, loading]);
 
     useEffect(() => {
         const fetchPantry = async () => {
@@ -66,23 +110,46 @@ export default function MealPlannerPage() {
         setLoading(true);
         setError('');
         setMealPlan(null);
-        try {
-            const res = await fetch('/api/generate-meal-plan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pantryItems: selectedItems, dietary, days, calorieTarget }),
+        setProgress(10);
+        setProgressText('Gathering ingredients...');
+
+        const progressInterval = setInterval(() => {
+            setProgress(prev => {
+                if (prev >= 85) return 85;
+                const increment = prev < 40 ? Math.random() * 12 : Math.random() * 7;
+                return Math.min(prev + increment, 85);
             });
-            const data = await res.json();
-            if (data.data) {
-                setMealPlan(data.data);
+        }, 800);
+
+        const inputParams = { pantryItems: selectedItems, dietary, days, calorieTarget };
+
+        try {
+            setProgressText('AI is designing your meal plan...');
+            const result = await startOperation('meal_plan', async () => {
+                const res = await fetch('/api/generate-meal-plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(inputParams),
+                });
+                const data = await res.json();
+                if (data.data) {
+                    return { data: data.data, provider: data.provider };
+                }
+                throw new Error(data.error || 'Failed to generate meal plan');
+            }, inputParams);
+
+            setProgress(95);
+            if (result?.data) {
+                setMealPlan(result.data);
                 setExpandedDay(0);
-            } else {
-                setError(data.error || 'Failed to generate meal plan');
             }
-        } catch {
-            setError('Network error. Please try again.');
+        } catch (err) {
+            setError(err.message || 'Network error. Please try again.');
         } finally {
-            setLoading(false);
+            clearInterval(progressInterval);
+            setProgress(100);
+            setProgressText('Done!');
+            setTimeout(() => { setLoading(false); setProgress(0); }, 400);
         }
     };
 
@@ -174,10 +241,24 @@ export default function MealPlannerPage() {
                     )}
 
                     {loading && (
-                        <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-                            <Loader size={40} style={{ color: 'var(--accent-green)', marginBottom: 16, animation: 'spin 1s linear infinite' }} />
-                            <h3 style={{ margin: 0 }}>Planning your meals...</h3>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>AI is designing a balanced meal plan</p>
+                        <div style={{ textAlign: 'center', padding: '80px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>
+                            <CalendarDays size={40} style={{ color: 'var(--accent-green)', marginBottom: 16, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                            <h3 style={{ margin: '0 0 8px' }}>{progressText}</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: 'var(--space-lg)' }}>Balancing nutrition across {days} day{days > 1 ? 's' : ''}</p>
+                            <div style={{ maxWidth: 360, margin: '0 auto' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.78rem' }}>
+                                    <span style={{ color: 'var(--text-tertiary)' }}>Progress</span>
+                                    <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>{Math.round(progress)}%</span>
+                                </div>
+                                <div style={{ height: 8, background: 'var(--bg-glass)', borderRadius: 99, overflow: 'hidden' }}>
+                                    <div style={{
+                                        height: '100%', borderRadius: 99,
+                                        background: 'linear-gradient(90deg, var(--accent-green), var(--accent-blue))',
+                                        width: `${progress}%`,
+                                        transition: 'width 0.5s ease-out',
+                                    }} />
+                                </div>
+                            </div>
                         </div>
                     )}
 
