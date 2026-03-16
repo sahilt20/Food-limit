@@ -639,16 +639,27 @@ export default function AddGroceriesPage() {
             if (itemsErr) throw itemsErr;
 
             // 🚀 BATCH INSERT - Insert all nutrition data at once
+            // Only include columns that exist in the nutrition_data table
+            const NUTRITION_DB_COLUMNS = [
+                'calories', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g', 'sugar_g',
+                'sodium_mg', 'potassium_mg', 'calcium_mg', 'iron_mg',
+                'vitamin_a_mcg', 'vitamin_c_mg', 'vitamin_d_mcg', 'vitamin_b12_mcg',
+                'vitamin_e_mg', 'vitamin_k_mcg', 'zinc_mg', 'magnesium_mg',
+                'folate_mcg', 'omega_3_mg',
+            ];
+
             const nutritionDataArray = groceryItems
                 .map((groceryItem, idx) => {
                     const item = validItems[idx];
                     if (!item.nutrition) return null;
 
-                    const { category, ...nutritionData } = item.nutrition;
-                    return {
-                        item_id: groceryItem.id,
-                        ...nutritionData,
-                    };
+                    const cleaned = { item_id: groceryItem.id };
+                    NUTRITION_DB_COLUMNS.forEach(col => {
+                        if (item.nutrition[col] != null) {
+                            cleaned[col] = item.nutrition[col];
+                        }
+                    });
+                    return cleaned;
                 })
                 .filter(Boolean); // Remove null entries
 

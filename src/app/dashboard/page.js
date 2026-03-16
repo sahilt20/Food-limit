@@ -69,6 +69,8 @@ export default function DashboardPage() {
 
     const [aiInsights, setAiInsights] = useState({ week: null, month: null, year: null });
     const [insightsLoading, setInsightsLoading] = useState(false);
+    const [insightsProgress, setInsightsProgress] = useState(0);
+    const [insightsProgressText, setInsightsProgressText] = useState('');
     const [insightsPeriod, setInsightsPeriod] = useState('week');
     const [insightsError, setInsightsError] = useState('');
     const [aiProvider, setAiProvider] = useState('');
@@ -181,14 +183,35 @@ export default function DashboardPage() {
 
         setInsightsLoading(true);
         setInsightsError('');
+        setInsightsProgress(10);
+        setInsightsProgressText('Preparing your data...');
+
+        // Simulate progress while waiting for AI
+        const progressInterval = setInterval(() => {
+            setInsightsProgress(prev => {
+                if (prev >= 85) return 85;
+                return prev + Math.random() * 12;
+            });
+        }, 800);
+
         try {
+            setInsightsProgress(20);
+            setInsightsProgressText('Sending to AI for analysis...');
+
             const response = await fetch('/api/ai-analytics', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sessions, period, household_calorie_target: householdCalorieTarget, family_size: familySize }),
             });
+
+            setInsightsProgress(70);
+            setInsightsProgressText('Processing AI response...');
+
             const data = await response.json();
             if (data.data) {
+                setInsightsProgress(90);
+                setInsightsProgressText('Saving insights...');
+
                 setAiInsights(prev => ({ ...prev, [period]: data.data }));
                 setAiProvider(data.provider || '');
 
@@ -210,6 +233,9 @@ export default function DashboardPage() {
                     console.error('Failed to cache insights:', dbError);
                 }
 
+                setInsightsProgress(100);
+                setInsightsProgressText('Done!');
+
                 if (data.warning) {
                     setInsightsError(`⚡ Using fallback data (${data.provider || 'local'}). Add an AI API key for richer insights.`);
                 }
@@ -219,7 +245,9 @@ export default function DashboardPage() {
         } catch (e) {
             setInsightsError('Failed to load AI insights. Check your connection and try again.');
         } finally {
+            clearInterval(progressInterval);
             setInsightsLoading(false);
+            setInsightsProgress(0);
         }
     };
 
@@ -996,9 +1024,22 @@ export default function DashboardPage() {
                 )}
 
                 {insightsLoading && (
-                    <div style={{ textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-secondary)' }}>
-                        <Loader size={24} className={styles.spinningIcon} style={{ marginBottom: 'var(--space-sm)' }} />
-                        <p>🤖 AI analyzing your data...</p>
+                    <div style={{ padding: 'var(--space-xl)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
+                            <Loader size={18} className={styles.spinningIcon} />
+                            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>AI Analyzing Your Data</span>
+                            <span style={{ marginLeft: 'auto', fontWeight: 700, color: 'var(--accent-green)', fontSize: '0.85rem' }}>{Math.round(insightsProgress)}%</span>
+                        </div>
+                        <div style={{ width: '100%', height: 6, background: 'var(--bg-glass)', borderRadius: 99, overflow: 'hidden', marginBottom: 'var(--space-sm)' }}>
+                            <div style={{
+                                height: '100%',
+                                width: `${insightsProgress}%`,
+                                background: 'var(--gradient-primary)',
+                                borderRadius: 99,
+                                transition: 'width 0.4s ease-out',
+                            }} />
+                        </div>
+                        <p style={{ fontSize: '0.82rem', color: 'var(--text-tertiary)', textAlign: 'center' }}>{insightsProgressText}</p>
                     </div>
                 )}
 
