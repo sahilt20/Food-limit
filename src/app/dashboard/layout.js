@@ -36,7 +36,7 @@ const navItems = [
     { href: '/dashboard/recipes', label: 'AI Recipes', icon: ChefHat },
     { href: '/dashboard/meal-planner', label: 'Meal Planner', icon: CalendarDays },
     { href: '/dashboard/recommendations', label: 'Recommendations', icon: Lightbulb },
-    { href: '/dashboard/goals',         label: 'Nutrition Goals',  icon: Target },
+    { href: '/dashboard/goals',         label: 'Intake & Goals',   icon: Target },
     { href: '/dashboard/shopping-list', label: 'Shopping List',    icon: ShoppingCart },
     { href: '/dashboard/analytics',     label: 'Analytics',        icon: BarChart2 },
     { href: '/dashboard/expiry',        label: 'Expiry Tracker',   icon: Clock },

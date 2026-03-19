@@ -18,6 +18,8 @@ const ROUTE_CONFIGS = {
     'ai-analytics':         { windowMs: 60_000, max: 5   },
     'recommend-foods':      { windowMs: 60_000, max: 10  },
     'history-recommendations': { windowMs: 60_000, max: 5 },
+    'analyze-consumed-item': { windowMs: 60_000, max: 8  },
+    'log-consumed-item':     { windowMs: 60_000, max: 20 },
 };
 
 function getIP(request) {

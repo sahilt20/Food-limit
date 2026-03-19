@@ -27,6 +27,18 @@ const VALID_CATEGORIES = new Set([
     'Legumes', 'Oils', 'Snacks', 'Beverages', 'Spices', 'Other',
 ]);
 
+const VALID_MEAL_TYPES = new Set([
+    'breakfast', 'lunch', 'dinner', 'snack', 'other',
+]);
+
+export const NUTRITION_FIELD_KEYS = [
+    'calories', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g', 'sugar_g',
+    'sodium_mg', 'potassium_mg', 'calcium_mg', 'iron_mg',
+    'vitamin_a_mcg', 'vitamin_c_mg', 'vitamin_d_mcg', 'vitamin_b12_mcg',
+    'vitamin_e_mg', 'vitamin_k_mcg', 'zinc_mg', 'magnesium_mg',
+    'folate_mcg', 'omega_3_mg',
+];
+
 // Allowed dietary preferences
 const VALID_DIETARY = new Set([
     'None', 'Vegan', 'Vegetarian', 'Keto', 'Gluten-Free',
@@ -145,6 +157,34 @@ export function validatePositiveInt(value, min = 1, max = 10000, fallback = min)
     const n = parseInt(value, 10);
     if (isNaN(n) || n < min || n > max) return fallback;
     return n;
+}
+
+export function validatePositiveNumber(value, min = 0, max = 10000, fallback = min || 0) {
+    const n = Number.parseFloat(value);
+    if (!Number.isFinite(n) || n < min || n > max) return fallback;
+    return n;
+}
+
+export function validateMealType(value) {
+    if (typeof value !== 'string') return 'snack';
+    const normalized = value.trim().toLowerCase();
+    return VALID_MEAL_TYPES.has(normalized) ? normalized : 'snack';
+}
+
+export function sanitizeBarcode(value) {
+    if (typeof value !== 'string') return '';
+    return value.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 64);
+}
+
+export function validateNutritionPayload(raw) {
+    const nutrition = {};
+
+    for (const key of NUTRITION_FIELD_KEYS) {
+        const value = Number.parseFloat(raw?.[key] ?? 0);
+        nutrition[key] = Number.isFinite(value) && value >= 0 ? value : 0;
+    }
+
+    return nutrition;
 }
 
 /**
