@@ -260,11 +260,6 @@
     background: var(--accent-green-dim);
 }
 
-.scanTrigger:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
-
 .notesField {
     grid-column: 1 / -1;
 }

@@ -246,6 +246,7 @@ export default function GoalsPage() {
     const streamRef = useRef(null);
     const scannerFrameRef = useRef(null);
     const detectorRef = useRef(null);
+    const labelInputRef = useRef(null);
 
     const flowItems = [
         {
@@ -518,6 +519,17 @@ export default function GoalsPage() {
         setLabelImage(file);
         setLabelPreview(URL.createObjectURL(file));
         resetAnalysis();
+    };
+
+    const handleScanTrigger = () => {
+        if (barcodeSupported) {
+            setScannerOpen(true);
+            return;
+        }
+
+        setEntryMode('scan');
+        setScannerError('');
+        labelInputRef.current?.click();
     };
 
     const analyzeConsumedItem = async () => {
@@ -815,9 +827,8 @@ export default function GoalsPage() {
                                     <button
                                         type="button"
                                         className={styles.scanTrigger}
-                                        onClick={() => setScannerOpen(true)}
-                                        disabled={!barcodeSupported}
-                                        title={barcodeSupported ? 'Scan barcode with camera' : 'Barcode scanning is not supported in this browser'}
+                                        onClick={handleScanTrigger}
+                                        title={barcodeSupported ? 'Scan barcode with camera' : 'Use the camera to capture the barcode or package image'}
                                     >
                                         <Camera size={16} />
                                         Scan
@@ -885,6 +896,7 @@ export default function GoalsPage() {
                                 </div>
                                 <label className={styles.uploadBox}>
                                     <input
+                                        ref={labelInputRef}
                                         type="file"
                                         accept="image/*"
                                         capture="environment"
