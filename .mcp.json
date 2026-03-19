@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "azure-devops": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/Users/sahiltanwar/Work/Repos/azure-devops-mcp/dist/index.js"],
+      "env": {
+        "AZURE_DEVOPS_ORG_URL": "${AZURE_DEVOPS_ORG_URL}",
+        "AZURE_DEVOPS_PAT": "${AZURE_DEVOPS_PAT}",
+        "AZURE_DEVOPS_PROJECT": "${AZURE_DEVOPS_PROJECT}"
+      }
+    }
+  }
+}

@@ -1,28 +1,57 @@
 import { NextResponse } from 'next/server';
 import { generateJSON } from '@/lib/aiProvider';
 import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
+import { sanitizeString, validateDietary, validatePositiveInt, generateRequestId } from '@/lib/validation';
+
+const MAX_PANTRY_ITEMS = 50;
 
 export async function POST(request) {
-    const rl = checkRateLimit(request);
+    const requestId = generateRequestId();
+    const rl = checkRateLimit(request, 'generate-meal-plan');
+
     if (!rl.allowed) {
         return NextResponse.json(
-            { error: 'Too many requests. Please try again later.' },
+            { error: 'Too many requests. Please try again later.', requestId },
             { status: 429, headers: rateLimitHeaders(rl) }
         );
     }
 
     try {
-        const { pantryItems, dietary, days = 3, calorieTarget = 2000, familySize = 1 } = await request.json();
-
-        if (!pantryItems || pantryItems.length === 0) {
-            return NextResponse.json({ error: 'No pantry items provided' }, { status: 400 });
+        let body;
+        try {
+            body = await request.json();
+        } catch {
+            return NextResponse.json(
+                { error: 'Invalid JSON body', requestId },
+                { status: 400, headers: rateLimitHeaders(rl) }
+            );
         }
 
-        const prompt = `You are a nutritionist meal planner. Create a ${days}-day meal plan using these available ingredients.
+        const { pantryItems, dietary, days, calorieTarget, familySize } = body;
 
-Available Ingredients: ${pantryItems.slice(0, 30).join(', ')}
-Dietary: ${dietary || 'None'}
-Daily Calorie Target: ${calorieTarget} kcal (for ${familySize} person${familySize > 1 ? 's' : ''})
+        if (!Array.isArray(pantryItems) || pantryItems.length === 0) {
+            return NextResponse.json(
+                { error: 'No pantry items provided', requestId },
+                { status: 400, headers: rateLimitHeaders(rl) }
+            );
+        }
+
+        // Sanitize inputs
+        const safePantry = pantryItems
+            .slice(0, MAX_PANTRY_ITEMS)
+            .map(i => sanitizeString(typeof i === 'string' ? i : String(i)))
+            .filter(Boolean);
+
+        const safeDietary     = validateDietary(dietary);
+        const safeDays        = validatePositiveInt(days, 1, 14, 3);
+        const safeCalories    = validatePositiveInt(calorieTarget, 500, 10000, 2000);
+        const safeFamilySize  = validatePositiveInt(familySize, 1, 20, 1);
+
+        const prompt = `You are a nutritionist meal planner. Create a ${safeDays}-day meal plan using these available ingredients.
+
+Available Ingredients: ${safePantry.join(', ')}
+Dietary: ${safeDietary}
+Daily Calorie Target: ${safeCalories} kcal (for ${safeFamilySize} person${safeFamilySize > 1 ? 's' : ''})
 Basic staples (salt, pepper, oil, water, spices) are available.
 
 Return ONLY this JSON:
@@ -51,11 +80,14 @@ Return ONLY this JSON:
 }`;
 
         const { data, provider } = await generateJSON(prompt);
-        return NextResponse.json({ data, provider }, { headers: rateLimitHeaders(rl) });
-    } catch (error) {
-        console.error('Meal plan generation error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to generate meal plan' },
+            { data, provider, requestId },
+            { headers: rateLimitHeaders(rl) }
+        );
+    } catch (error) {
+        console.error(`[${requestId}] Meal plan generation error:`, error);
+        return NextResponse.json(
+            { error: 'Failed to generate meal plan', requestId },
             { status: 500, headers: rateLimitHeaders(rl) }
         );
     }

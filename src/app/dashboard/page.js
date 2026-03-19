@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabaseClient';
 import { NUTRIENT_INFO, DAILY_VALUES, lookupNutrition } from '@/lib/nutritionDB';
 import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 import Link from 'next/link';
+import FeatureFlow from '@/components/FeatureFlow';
 import {
     TrendingUp,
     ShoppingCart,
@@ -293,6 +294,36 @@ export default function DashboardPage() {
     const totalCalories = sessions.reduce((s, sess) => s + (sess.total_calories || 0), 0);
     const totalItems = sessions.reduce((s, sess) => s + (sess.total_items || 0), 0);
     const avgCalPerSession = sessions.length ? Math.round(totalCalories / sessions.length) : 0;
+    const flowItems = [
+        {
+            href: '/dashboard/add',
+            label: 'Log groceries',
+            description: 'Capture receipts or enter groceries manually so every other feature has current data.',
+            icon: PlusCircle,
+            state: allSessions.length ? 'done' : 'current',
+        },
+        {
+            href: '/dashboard/meal-planner',
+            label: 'Build a meal plan',
+            description: 'Convert what you bought into meals instead of starting from scratch.',
+            icon: Calendar,
+            state: 'next',
+        },
+        {
+            href: '/dashboard/shopping-list',
+            label: 'Finish the list',
+            description: 'Push missing ingredients into a tap-friendly checklist for your next trip.',
+            icon: ShoppingCart,
+            state: 'next',
+        },
+        {
+            href: '/dashboard/recommendations',
+            label: 'Improve the basket',
+            description: 'Use AI recommendations to close nutrition gaps and spend better.',
+            icon: Sparkles,
+            state: 'next',
+        },
+    ];
 
     // Aggregations
     const aggregatedMacros = { protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, salt: 0 };
@@ -605,7 +636,7 @@ export default function DashboardPage() {
                         Your food shopping intelligence at a glance
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div className={styles.welcomeActions}>
                     <select 
                         className="input-field" 
                         style={{ width: 'auto', padding: '8px 16px', borderRadius: '99px', background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}
@@ -623,6 +654,12 @@ export default function DashboardPage() {
                     </Link>
                 </div>
             </div>
+
+            <FeatureFlow
+                title="Connected Grocery Journey"
+                description="Go from capturing groceries to planning meals, filling gaps, and reviewing recommendations without leaving the flow."
+                items={flowItems}
+            />
 
             {/* Empty State */}
             {!loading && allSessions.length === 0 && (
@@ -901,7 +938,7 @@ export default function DashboardPage() {
                             </h3>
                             <span className={styles.chartBadge}>Auto-calculated</span>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-md)' }}>
+                        <div className={styles.budgetGrid}>
                             <div style={{ padding: 'var(--space-md)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
                                 <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--accent-green)' }}>{formatCurrency(avgWeekly, currency)}</div>
                                 <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Avg Weekly</div>
@@ -1230,7 +1267,7 @@ export default function DashboardPage() {
                         )}
 
                         {/* Nutrition Grade + Health */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+                        <div className={styles.insightsSplitGrid}>
                             {aiInsights[insightsPeriod].nutrition_insights && (
                                 <div className={styles.insightCard}>
                                     <div className={styles.insightCardHeader}>
@@ -1380,7 +1417,7 @@ export default function DashboardPage() {
                                     </div>
                                     <span className={styles.insightCardTitle}>Smart Purchase Recommendations</span>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+                                <div className={styles.insightsSplitGrid}>
                                     <div>
                                         <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: '8px', fontWeight: 600 }}>MISSING NUTRIENTS</p>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -1430,7 +1467,7 @@ export default function DashboardPage() {
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>
                             AI-suggested swaps from your recent grocery trip
                         </p>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-md)' }}>
+                        <div className={styles.altGrid}>
                             {alts.map((alt, i) => (
                                 <div key={i} style={{
                                     padding: 'var(--space-md)',

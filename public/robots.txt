@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /download
+
+# Keep user data private from crawlers
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /auth/
+
+Sitemap: https://food-limit.netlify.app/sitemap.xml

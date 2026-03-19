@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabaseClient';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { AiOperationsProvider } from '@/lib/AiOperationsContext';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import Link from 'next/link';
 import {
     LayoutDashboard,
@@ -15,12 +16,16 @@ import {
     X,
     Sparkles,
     ChevronRight,
-    Download,
     ChefHat,
     Lightbulb,
     CalendarDays,
     Sun,
     Moon,
+    Clock,
+    Target,
+    ShoppingCart,
+    BarChart2,
+    MoreHorizontal,
 } from 'lucide-react';
 import styles from './layout.module.css';
 
@@ -31,17 +36,32 @@ const navItems = [
     { href: '/dashboard/recipes', label: 'AI Recipes', icon: ChefHat },
     { href: '/dashboard/meal-planner', label: 'Meal Planner', icon: CalendarDays },
     { href: '/dashboard/recommendations', label: 'Recommendations', icon: Lightbulb },
-    { href: '/dashboard/profile', label: 'Profile', icon: UserCircle },
+    { href: '/dashboard/goals',         label: 'Nutrition Goals',  icon: Target },
+    { href: '/dashboard/shopping-list', label: 'Shopping List',    icon: ShoppingCart },
+    { href: '/dashboard/analytics',     label: 'Analytics',        icon: BarChart2 },
+    { href: '/dashboard/expiry',        label: 'Expiry Tracker',   icon: Clock },
+    { href: '/dashboard/profile',       label: 'Profile',          icon: UserCircle },
+];
+
+// Bottom nav shows the 4 most-used destinations + a "More" button to open sidebar
+const bottomNavItems = [
+    { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
+    { href: '/dashboard/add', label: 'Add', icon: PlusCircle },
+    { href: '/dashboard/shopping-list', label: 'List', icon: ShoppingCart },
+    { href: '/dashboard/recipes', label: 'Recipes', icon: ChefHat },
 ];
 
 export default function DashboardLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
-    const [theme, setTheme] = useState('dark');
+    const [theme, setTheme] = useState(() => (
+        typeof window !== 'undefined'
+            ? localStorage.getItem('foodlimit_theme') || 'dark'
+            : 'dark'
+    ));
     const pathname = usePathname();
-    const router = useRouter();
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
 
     useEffect(() => {
         const getUser = async () => {
@@ -72,14 +92,18 @@ export default function DashboardLayout({ children }) {
             }
         };
         getUser();
-    }, []);
+    }, [supabase]);
 
-    // Load theme preference
     useEffect(() => {
-        const savedTheme = localStorage.getItem('foodlimit_theme') || 'dark';
-        setTheme(savedTheme);
-        document.documentElement.setAttribute('data-theme', savedTheme);
-    }, []);
+        document.documentElement.setAttribute('data-theme', theme);
+    }, [theme]);
+
+    useEffect(() => {
+        document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [sidebarOpen]);
 
     const toggleTheme = () => {
         const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -168,11 +192,19 @@ export default function DashboardLayout({ children }) {
             {/* Main content */}
             <main className={styles.mainContent}>
                 <header className={styles.topbar}>
-                    <button className={styles.menuBtn} onClick={() => setSidebarOpen(true)}>
+                    <button
+                        className={styles.menuBtn}
+                        onClick={() => setSidebarOpen(true)}
+                        aria-label="Open navigation menu"
+                        aria-expanded={sidebarOpen}
+                    >
                         <Menu size={24} />
                     </button>
-                    <div className={styles.topbarTitle}>
-                        {navItems.find(i => i.href === pathname)?.label || 'FoodLimit'}
+                    <div className={styles.topbarInfo}>
+                        <div className={styles.topbarLabel}>FoodLimit</div>
+                        <div className={styles.topbarTitle}>
+                            {navItems.find(i => i.href === pathname)?.label || 'FoodLimit'}
+                        </div>
                     </div>
                     <div className={styles.topbarRight}>
                         <button
@@ -188,10 +220,38 @@ export default function DashboardLayout({ children }) {
                     </div>
                 </header>
                 <AiOperationsProvider>
-                    <div className={styles.pageContent}>
-                        {children}
-                    </div>
+                    <ErrorBoundary>
+                        <div className={styles.pageContent}>
+                            {children}
+                        </div>
+                    </ErrorBoundary>
                 </AiOperationsProvider>
+
+                {/* Mobile bottom navigation */}
+                <nav className={styles.bottomNav}>
+                    {bottomNavItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = pathname === item.href;
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`${styles.bottomNavItem} ${isActive ? styles.bottomNavActive : ''}`}
+                            >
+                                <Icon size={22} />
+                                <span>{item.label}</span>
+                            </Link>
+                        );
+                    })}
+                    <button
+                        className={styles.bottomNavItem}
+                        onClick={() => setSidebarOpen(true)}
+                        aria-label="Open menu"
+                    >
+                        <MoreHorizontal size={22} />
+                        <span>More</span>
+                    </button>
+                </nav>
             </main>
         </div>
     );

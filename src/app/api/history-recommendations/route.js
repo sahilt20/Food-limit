@@ -1,35 +1,62 @@
 import { NextResponse } from 'next/server';
 import { generateJSON } from '@/lib/aiProvider';
 import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
+import { sanitizeString, generateRequestId } from '@/lib/validation';
+
+const MAX_TOP_ITEMS    = 30;
+const MAX_RECENT_ITEMS = 20;
 
 export async function POST(request) {
-    const rl = checkRateLimit(request);
+    const requestId = generateRequestId();
+    const rl = checkRateLimit(request, 'history-recommendations');
+
     if (!rl.allowed) {
         return NextResponse.json(
-            { error: 'Too many requests. Please try again later.' },
+            { error: 'Too many requests. Please try again later.', requestId },
             { status: 429, headers: rateLimitHeaders(rl) }
         );
     }
 
     try {
-        const { topItems, recentItems } = await request.json();
-
-        if (!topItems || topItems.length === 0) {
+        let body;
+        try {
+            body = await request.json();
+        } catch {
             return NextResponse.json(
-                { error: 'No purchase history provided.' },
-                { status: 400 }
+                { error: 'Invalid JSON body', requestId },
+                { status: 400, headers: rateLimitHeaders(rl) }
             );
         }
 
-        const prompt = `You are a world-class nutrition and culinary expert AI. 
+        const { topItems, recentItems } = body;
+
+        if (!Array.isArray(topItems) || topItems.length === 0) {
+            return NextResponse.json(
+                { error: 'No purchase history provided.', requestId },
+                { status: 400, headers: rateLimitHeaders(rl) }
+            );
+        }
+
+        // Sanitize item names (these come from user purchase history)
+        const safeTopItems = topItems
+            .slice(0, MAX_TOP_ITEMS)
+            .map(i => (typeof i === 'string' ? sanitizeString(i) : sanitizeString(String(i?.name ?? ''))))
+            .filter(Boolean);
+
+        const safeRecentItems = (Array.isArray(recentItems) ? recentItems : [])
+            .slice(0, MAX_RECENT_ITEMS)
+            .map(i => (typeof i === 'string' ? sanitizeString(i) : sanitizeString(String(i?.name ?? ''))))
+            .filter(Boolean);
+
+        const prompt = `You are a world-class nutrition and culinary expert AI.
 Analyze the user's grocery purchase history to provide highly personalized recommendations that "complement or improve" their food.
 
 Context:
-User's Most Frequently Bought Items: 
-${JSON.stringify(topItems.slice(0, 30))}
+User's Most Frequently Bought Items:
+${JSON.stringify(safeTopItems)}
 
 User's Recent Purchases (for context):
-${JSON.stringify(recentItems?.slice(0, 20) || [])}
+${JSON.stringify(safeRecentItems)}
 
 Provide your response in EXACTLY this JSON format:
 {
@@ -61,29 +88,30 @@ Provide your response in EXACTLY this JSON format:
 }
 
 CRITICAL RULES:
-1. Provide 3-5 high-quality "complements" (foods to add alongside what they already eat).
-2. Provide 3-5 "improvements" (healthy swaps for lower-quality items they frequently buy).
+1. Provide 3-5 high-quality "complements".
+2. Provide 3-5 "improvements" (healthy swaps for lower-quality items).
 3. Identify 1-3 likely "nutritional_gaps" based on the ABSENCE of certain food groups.
 4. Output STRICTLY JSON.
-5. Provide a realistic "suggested_store" (e.g., Whole Foods, Trader Joe's, Walmart, Aldi, Local Farmers Market) for EVERY item recommended where the user is likely to find high-quality versions of that food.`;
+5. Provide a realistic "suggested_store" for every item.`;
 
         try {
             const { data, provider } = await generateJSON(prompt);
             return NextResponse.json(
-                { data, provider },
+                { data, provider, requestId },
                 { headers: rateLimitHeaders(rl) }
             );
         } catch (aiError) {
-            console.error('AI History Recommendations Error:', aiError);
-            return NextResponse.json({
-                error: 'AI is temporarily unavailable. Please try again later.'
-            }, { status: 503, headers: rateLimitHeaders(rl) });
+            console.warn(`[${requestId}] AI history recommendations failed:`, aiError.message);
+            return NextResponse.json(
+                { error: 'AI is temporarily unavailable. Please try again later.', requestId },
+                { status: 503, headers: rateLimitHeaders(rl) }
+            );
         }
     } catch (error) {
-        console.error('History recommendation route error:', error);
+        console.error(`[${requestId}] History recommendation error:`, error);
         return NextResponse.json(
-            { error: error.message || 'Failed to generate recommendations.' },
-            { status: 500 }
+            { error: 'Failed to generate recommendations.', requestId },
+            { status: 500, headers: rateLimitHeaders(rl) }
         );
     }
 }

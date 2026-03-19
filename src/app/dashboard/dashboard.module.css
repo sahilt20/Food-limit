@@ -42,6 +42,13 @@
     font-size: 0.9rem;
 }
 
+.welcomeActions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
 /* ========== Stat Cards ========== */
 .statGrid {
     display: grid;
@@ -551,16 +558,46 @@
     animation: spin 1s linear infinite;
 }
 
+.insightsSplitGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+}
+
+.budgetGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-md);
+}
+
+.altGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-md);
+}
+
 /* ========== Responsive ========== */
 @media (max-width: 1024px) {
     .statGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .budgetGrid {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
 @media (max-width: 768px) {
     .statGrid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr; /* 2 cols is far less scrolling than 1 col */
+    }
+
+    .statCard {
+        padding: var(--space-md) var(--space-sm);
+    }
+
+    .statValue {
+        font-size: 1.25rem;
     }
 
     .chartsGrid {
@@ -568,7 +605,11 @@
     }
 
     .welcomeTitle {
-        font-size: 1.4rem;
+        font-size: 1.35rem;
+    }
+
+    .welcomeSection {
+        margin-bottom: var(--space-md);
     }
 
     .macroLayout {
@@ -578,6 +619,7 @@
     .macroLayout .chartBodyDoughnut {
         flex: none;
         width: 100%;
+        height: 180px;
     }
 
     .predictionGrid {
@@ -588,5 +630,58 @@
         flex-direction: column;
         align-items: flex-start;
         gap: var(--space-sm);
+    }
+
+    .welcomeActions {
+        width: 100%;
+    }
+
+    .welcomeActions > :first-child,
+    .welcomeActions > :last-child {
+        width: 100% !important;
+    }
+
+    .insightsSplitGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .insightsTabs {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .insightTab {
+        flex: 1;
+        text-align: center;
+    }
+
+    .chartBody {
+        height: 180px;
+    }
+
+    .sessionItem {
+        gap: var(--space-sm);
+    }
+
+    .budgetGrid,
+    .altGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 420px) {
+    .statGrid {
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-sm);
+    }
+
+    .statCard {
+        padding: 10px;
+        gap: var(--space-sm);
+    }
+
+    .statIcon {
+        width: 36px;
+        height: 36px;
     }
 }

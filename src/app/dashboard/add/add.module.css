@@ -1154,25 +1154,41 @@
         grid-template-columns: 1fr;
     }
 
-    .itemFields {
-        grid-template-columns: 1fr 1fr;
-    }
-
+    /* Item row becomes a card-style stacked layout on mobile */
     .itemRow {
         flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    .itemNumber {
+        margin-top: 0;
+        align-self: flex-start;
+    }
+
+    /* Two columns: name fills top row, quantity + unit side by side, price + category side by side */
+    .itemFields {
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-sm);
+    }
+
+    /* Item name spans full width */
+    .itemFields > :first-child {
+        grid-column: 1 / -1;
     }
 
     .summaryCards {
         grid-template-columns: repeat(3, 1fr);
     }
 
+    /* Nutrition table: show name + calories + protein only on mobile */
     .tableHeader,
     .tableRow {
-        grid-template-columns: 1.5fr repeat(4, 1fr);
+        grid-template-columns: 2fr 1fr 1fr;
+        min-width: unset;
     }
 
-    .tableHeader span:nth-child(n+6),
-    .tableRow span:nth-child(n+6) {
+    .tableHeader span:nth-child(n+4),
+    .tableRow span:nth-child(n+4) {
         display: none;
     }
 
@@ -1185,6 +1201,47 @@
     }
 
     .progressStepLabel {
-        font-size: 0.6rem;
+        font-size: 0.65rem;
+    }
+
+    /* Upload zone less padded on mobile */
+    .uploadZone {
+        padding: var(--space-xl) var(--space-lg);
+    }
+
+    /* Tabs scroll horizontally if needed */
+    .tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+    }
+
+    .tab {
+        font-size: 0.85rem;
+        padding: 12px var(--space-md);
+        flex: none;
+    }
+
+    .analysisProgress {
+        max-width: 100%;
+    }
+
+    .successStats {
+        gap: var(--space-lg);
+    }
+}
+
+@media (max-width: 420px) {
+    .summaryCards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .itemFields {
+        grid-template-columns: 1fr;
+    }
+
+    .itemFields > :first-child {
+        grid-column: 1;
     }
 }

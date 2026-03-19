@@ -2,28 +2,42 @@ import { NextResponse } from 'next/server';
 import { generateJSON } from '@/lib/aiProvider';
 import { lookupNutrition } from '@/lib/nutritionDB';
 import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
+import { validateItems, generateRequestId } from '@/lib/validation';
 
 export async function POST(request) {
-    const rl = checkRateLimit(request);
+    const requestId = generateRequestId();
+    const rl = checkRateLimit(request, 'analyze-nutrition');
+
     if (!rl.allowed) {
         return NextResponse.json(
-            { error: 'Too many requests. Please try again later.' },
+            { error: 'Too many requests. Please try again later.', requestId },
             { status: 429, headers: rateLimitHeaders(rl) }
         );
     }
 
     try {
-        const { items } = await request.json();
-
-        if (!items || items.length === 0) {
+        let body;
+        try {
+            body = await request.json();
+        } catch {
             return NextResponse.json(
-                { error: 'No items provided' },
-                { status: 400 }
+                { error: 'Invalid JSON body', requestId },
+                { status: 400, headers: rateLimitHeaders(rl) }
             );
         }
 
+        const validation = validateItems(body?.items);
+        if (!validation.valid) {
+            return NextResponse.json(
+                { error: validation.errors[0] ?? 'Invalid items', requestId },
+                { status: 400, headers: rateLimitHeaders(rl) }
+            );
+        }
+
+        const { items } = validation;
+
         const itemsList = items.map(i =>
-            `- ${i.name} (${i.quantity} ${i.unit}, $${i.price || 0})`
+            `- ${i.name} (${i.quantity} ${i.unit}, $${i.price})`
         ).join('\n');
 
         const prompt = `You are a nutrition expert. Analyze these grocery items and provide detailed nutrition data.
@@ -74,12 +88,12 @@ Return ONLY this JSON structure (no markdown, no extra text):
         try {
             const { data, provider } = await generateJSON(prompt);
             return NextResponse.json(
-                { data, provider },
+                { data, provider, requestId },
                 { headers: rateLimitHeaders(rl) }
             );
         } catch (aiError) {
             // AI failed — fall back to local nutrition DB
-            console.warn('AI nutrition failed, using local DB:', aiError.message);
+            console.warn(`[${requestId}] AI nutrition failed, using local DB:`, aiError.message);
 
             const UNIT_TO_GRAMS = {
                 g: 1, kg: 1000, piece: 150, oz: 28.35,
@@ -125,10 +139,10 @@ Return ONLY this JSON structure (no markdown, no extra text):
                 };
             });
 
-            const totalCal = localItems.reduce((s, i) => s + i.calories, 0);
-            const totalPro = localItems.reduce((s, i) => s + i.protein_g, 0);
+            const totalCal   = localItems.reduce((s, i) => s + i.calories, 0);
+            const totalPro   = localItems.reduce((s, i) => s + i.protein_g, 0);
             const totalCarbs = localItems.reduce((s, i) => s + i.carbs_g, 0);
-            const totalFat = localItems.reduce((s, i) => s + i.fat_g, 0);
+            const totalFat   = localItems.reduce((s, i) => s + i.fat_g, 0);
             const totalSugar = localItems.reduce((s, i) => s + i.sugar_g, 0);
             const totalSodium = localItems.reduce((s, i) => s + i.sodium_mg, 0);
 
@@ -151,14 +165,15 @@ Return ONLY this JSON structure (no markdown, no extra text):
                     },
                 },
                 provider: 'local',
-                warning: aiError.message,
+                warning: 'AI unavailable; used local database',
+                requestId,
             }, { headers: rateLimitHeaders(rl) });
         }
     } catch (error) {
-        console.error('Nutrition analysis error:', error);
+        console.error(`[${requestId}] Nutrition analysis error:`, error);
         return NextResponse.json(
-            { error: error.message || 'Nutrition analysis failed' },
-            { status: 500 }
+            { error: 'Nutrition analysis failed', requestId },
+            { status: 500, headers: rateLimitHeaders(rl) }
         );
     }
 }

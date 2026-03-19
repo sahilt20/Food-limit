@@ -1,28 +1,44 @@
 import { NextResponse } from 'next/server';
 import { generateVisionJSON } from '@/lib/aiProvider';
 import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
+import { validateUploadedFile, generateRequestId } from '@/lib/validation';
+
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export async function POST(request) {
-    const rl = checkRateLimit(request);
+    const requestId = generateRequestId();
+    const rl = checkRateLimit(request, 'analyze-receipt');
+
     if (!rl.allowed) {
         return NextResponse.json(
-            { error: 'Too many requests. Please try again later.' },
+            { error: 'Too many requests. Please try again later.', requestId },
             { status: 429, headers: rateLimitHeaders(rl) }
         );
     }
 
     try {
-        const formData = await request.formData();
-        const receipt = formData.get('receipt');
-
-        if (!receipt) {
+        let formData;
+        try {
+            formData = await request.formData();
+        } catch {
             return NextResponse.json(
-                { error: 'No receipt image provided' },
-                { status: 400 }
+                { error: 'Invalid form data', requestId },
+                { status: 400, headers: rateLimitHeaders(rl) }
             );
         }
 
-        // Convert file to buffer, then base64
+        const receipt = formData.get('receipt');
+
+        const fileValidation = validateUploadedFile(receipt, ALLOWED_MIME_TYPES, MAX_FILE_SIZE);
+        if (!fileValidation.valid) {
+            return NextResponse.json(
+                { error: fileValidation.error, requestId },
+                { status: 400, headers: rateLimitHeaders(rl) }
+            );
+        }
+
+        // Convert file to base64
         const bytes = await receipt.arrayBuffer();
         const buffer = Buffer.from(bytes);
         const base64 = buffer.toString('base64');
@@ -37,22 +53,17 @@ CRITICAL INSTRUCTIONS:
    - "JS S/SKIM MLK 1.136L" → "Semi-Skimmed Milk 1.136L"
    - "ACTIVIA F/BERIS&CEX4" → "Activia Fruit Berries & Cereal x4"
    - "ST EWE FREE EGGS X6" → "Free Range Eggs x6"
-   - "JS CHKN LIVER PATE" → "Chicken Liver Pate"
-   - "ACTIMEL MULTIFRT X8" → "Actimel Multifruit x8"
-   - "JS EXTRA LEAN PRK MI" → "Extra Lean Pork Mince"
-   - "JS CNFRENCE PEARS X4" → "Conference Pears x4"
    Always decode to the FULL human-readable food name.
 
 2. **Extract quantity from the item name** if it contains multipliers like "X4", "X6", "X8", "2L" etc.
 
 3. **Classify each item as food or non-food**:
    - FOOD: anything edible — groceries, drinks, snacks, ingredients, condiments, etc.
-   - NON-FOOD: household products, cleaning supplies, toiletries, paper goods, plastic bags, pet supplies, batteries, magazines, kitchenware, etc.
-     Examples: dish soap, laundry detergent, trash bags, toilet paper, shampoo, toothpaste, sponges, foil, cling film, carrier bags, pet food
+   - NON-FOOD: household products, cleaning supplies, toiletries, paper goods, pet supplies, etc.
 
-4. **Skip receipt metadata lines**: "Nectar Price Saving", "PRICE REDUCTION", "BALANCE DUE", "GIFT CARD", "CHANGE", "SAVINGS", "PROMOTIONS", payment details, loyalty points, etc.
+4. **Skip receipt metadata lines**: "Nectar Price Saving", "PRICE REDUCTION", "BALANCE DUE", payment details, loyalty points, etc.
 
-5. **Handle currency**: Prices may be in £ (GBP), $ (USD), or € (EUR). Convert to numeric values (e.g., £2.55 → 2.55).
+5. **Handle currency**: Prices may be in £, $, or €. Convert to numeric values (e.g., £2.55 → 2.55).
 
 6. **Detect the store name** from the receipt header (e.g., "Sainsbury's", "Tesco", "Whole Foods").
 
@@ -93,25 +104,25 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no code fences, no explanations.
         try {
             const { data, provider } = await generateVisionJSON(prompt, base64, mimeType);
             return NextResponse.json(
-                { data, provider },
+                { data, provider, requestId },
                 { headers: rateLimitHeaders(rl) }
             );
         } catch (aiError) {
-            // All AI providers failed — tell client to use Tesseract.js
+            console.warn(`[${requestId}] AI receipt analysis failed:`, aiError.message);
             return NextResponse.json(
                 {
                     error: 'AI receipt analysis unavailable. The app will fall back to browser-based OCR.',
                     fallback: 'tesseract',
-                    details: aiError.message,
+                    requestId,
                 },
                 { status: 503, headers: rateLimitHeaders(rl) }
             );
         }
     } catch (error) {
-        console.error('Receipt analysis error:', error);
+        console.error(`[${requestId}] Receipt analysis error:`, error);
         return NextResponse.json(
-            { error: error.message || 'Receipt analysis failed' },
-            { status: 500 }
+            { error: 'Receipt analysis failed', requestId },
+            { status: 500, headers: rateLimitHeaders(rl) }
         );
     }
 }

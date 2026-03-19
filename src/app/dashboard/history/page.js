@@ -3,14 +3,13 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import { formatCurrency } from '@/lib/currency';
+import FeatureFlow from '@/components/FeatureFlow';
 import {
     Calendar,
     ShoppingCart,
     Flame,
     DollarSign,
     Search,
-    Filter,
-    ChevronRight,
     Package,
     Trash2,
 } from 'lucide-react';
@@ -21,7 +20,6 @@ export default function HistoryPage() {
     const [loading, setLoading] = useState(true);
     const [currency, setCurrency] = useState('USD');
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedSession, setSelectedSession] = useState(null);
 
     useEffect(() => {
         const loadSessions = async () => {
@@ -76,6 +74,29 @@ export default function HistoryPage() {
     const totalSpent = sessions.reduce((s, sess) => s + (sess.total_spent || 0), 0);
     const totalCalories = sessions.reduce((s, sess) => s + (sess.total_calories || 0), 0);
     const totalItems = sessions.reduce((s, sess) => s + (sess.total_items || 0), 0);
+    const flowItems = [
+        {
+            href: '/dashboard/history',
+            label: 'Review past trips',
+            description: 'Use your session history to spot trends and quickly reopen context.',
+            icon: Calendar,
+            state: 'current',
+        },
+        {
+            href: '/dashboard/add',
+            label: 'Log the next basket',
+            description: 'Keep the timeline useful by adding every grocery trip from the same flow.',
+            icon: ShoppingCart,
+            state: 'next',
+        },
+        {
+            href: '/dashboard/analytics',
+            label: 'Deep-dive analytics',
+            description: 'Move from timeline view into category, value, and nutrient analysis.',
+            icon: Package,
+            state: 'next',
+        },
+    ];
 
     const formatDate = (dateStr) => {
         const date = new Date(dateStr);
@@ -112,6 +133,12 @@ export default function HistoryPage() {
                     <p className={styles.pageSubtitle}>Review your past grocery sessions and trending data</p>
                 </div>
             </div>
+
+            <FeatureFlow
+                title="History Feeds Better Decisions"
+                description="Use the timeline to understand what you bought, then jump back into logging or analytics without breaking the workflow."
+                items={flowItems}
+            />
 
             {/* Summary Stats */}
             <div className={styles.summaryGrid}>

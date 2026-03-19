@@ -1,8 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import { useAiOperations } from '@/lib/AiOperationsContext';
+import FeatureFlow from '@/components/FeatureFlow';
 import {
     Sparkles,
     ArrowRight,
@@ -10,9 +12,10 @@ import {
     AlertCircle,
     Loader,
     Apple,
-    TrendingUp,
     HeartPulse,
-    Store
+    Store,
+    ShoppingCart,
+    CalendarDays,
 } from 'lucide-react';
 import styles from './recommendations.module.css';
 
@@ -27,7 +30,6 @@ export default function RecommendationsPage() {
 
     const { startOperation, getCompleted, clearCompleted, isRunning } = useAiOperations();
 
-    // Load saved recommendations from DB + check context for background-completed results
     useEffect(() => {
         const completed = getCompleted('recommendations');
         if (completed?.content) {
@@ -52,10 +54,10 @@ export default function RecommendationsPage() {
                 }
             } catch {}
         };
+
         loadSaved();
     }, [getCompleted, clearCompleted]);
 
-    // If a background op is running, show loading state
     useEffect(() => {
         if (isRunning('recommendations') && !generating) {
             setGenerating(true);
@@ -78,23 +80,21 @@ export default function RecommendationsPage() {
                     if (data && data.length > 0) {
                         const itemCounts = {};
                         const recent = [];
-                        
-                        // Extract recent items from the last 2 sessions
-                        data.slice(0, 2).forEach(session => {
-                            session.grocery_items?.forEach(i => {
-                                if (i.name) recent.push(i.name);
+
+                        data.slice(0, 2).forEach((session) => {
+                            session.grocery_items?.forEach((item) => {
+                                if (item.name) recent.push(item.name);
                             });
                         });
 
-                        // Calculate frequency for top items
-                        data.forEach(session => {
-                            session.grocery_items?.forEach(item => {
+                        data.forEach((session) => {
+                            session.grocery_items?.forEach((item) => {
                                 if (item.name) {
                                     const key = item.name.toLowerCase();
                                     if (!itemCounts[key]) {
                                         itemCounts[key] = { name: item.name, category: item.category, count: 0 };
                                     }
-                                    itemCounts[key].count++;
+                                    itemCounts[key].count += 1;
                                 }
                             });
                         });
@@ -107,18 +107,19 @@ export default function RecommendationsPage() {
                     }
                 }
             } catch (err) {
-                console.error("Error fetching history for recommendations", err);
-                setError("Failed to load your purchase history.");
+                console.error('Error fetching history for recommendations', err);
+                setError('Failed to load your purchase history.');
             } finally {
                 setLoading(false);
             }
         };
+
         fetchHistory();
     }, []);
 
     const generateRecommendations = async () => {
         if (historyData.top.length === 0) {
-            setError("You need to log at least one grocery trip to get recommendations.");
+            setError('You need to log at least one grocery trip to get recommendations.');
             return;
         }
 
@@ -128,7 +129,7 @@ export default function RecommendationsPage() {
         setProgressText('Scanning purchase history...');
 
         const progressInterval = setInterval(() => {
-            setProgress(prev => {
+            setProgress((prev) => {
                 if (prev >= 85) return 85;
                 const increment = prev < 40 ? Math.random() * 14 : Math.random() * 8;
                 return Math.min(prev + increment, 85);
@@ -139,191 +140,261 @@ export default function RecommendationsPage() {
 
         try {
             setProgressText('AI analyzing your buying patterns...');
-            const result = await startOperation('recommendations', async () => {
-                const response = await fetch('/api/history-recommendations', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(inputParams),
-                });
-                const data = await response.json();
-                if (data.data) {
-                    return { data: data.data, provider: data.provider };
-                }
-                throw new Error(data.error || 'Failed to generate recommendations');
-            }, inputParams);
+            const result = await startOperation(
+                'recommendations',
+                async () => {
+                    const response = await fetch('/api/history-recommendations', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(inputParams),
+                    });
+                    const data = await response.json();
+                    if (data.data) {
+                        return { data: data.data, provider: data.provider };
+                    }
+                    throw new Error(data.error || 'Failed to generate recommendations');
+                },
+                inputParams
+            );
 
             setProgress(95);
             if (result?.data) {
                 setRecommendations(result.data);
             }
         } catch (err) {
-            setError(err.message || "Network error. Please try again.");
+            setError(err.message || 'Network error. Please try again.');
         } finally {
             clearInterval(progressInterval);
             setProgress(100);
             setProgressText('Done!');
-            setTimeout(() => { setGenerating(false); setProgress(0); }, 400);
+            setTimeout(() => {
+                setGenerating(false);
+                setProgress(0);
+            }, 400);
         }
     };
 
+    const flowItems = [
+        {
+            href: '/dashboard/recommendations',
+            label: 'Analyze buying patterns',
+            description: 'Use purchase history to identify repeat behaviors, weak spots, and practical improvements.',
+            icon: Sparkles,
+            state: 'current',
+        },
+        {
+            href: '/dashboard/add',
+            label: 'Apply improvements on the next trip',
+            description: 'Take the recommended swaps into your next grocery logging flow.',
+            icon: ShoppingCart,
+            state: recommendations ? 'done' : 'next',
+        },
+        {
+            href: '/dashboard/meal-planner',
+            label: 'Turn advice into meals',
+            description: 'Use better ingredients in the planner once you know what to add or replace.',
+            icon: CalendarDays,
+            state: 'next',
+        },
+    ];
+
+    const sections = [
+        {
+            key: 'complements',
+            title: 'Perfect Complements',
+            subtitle: 'Add these around what you already buy for better nutrient coverage.',
+            icon: CheckCircle2,
+            accent: 'green',
+            items: recommendations?.complements || [],
+            render: (item) => (
+                <>
+                    <div className={styles.cardHeader}>
+                        <span className={styles.cardTitle}>+ {item.item_to_add}</span>
+                        <span className={styles.cardMeta}>Pairs with {item.because_you_buy}</span>
+                    </div>
+                    <p className={styles.cardReason}>{item.reason}</p>
+                    {item.suggested_store && (
+                        <span className={styles.storeTag}>
+                            <Store size={14} />
+                            Buy at {item.suggested_store}
+                        </span>
+                    )}
+                </>
+            ),
+        },
+        {
+            key: 'improvements',
+            title: 'Healthier Improvements',
+            subtitle: 'Simple swaps that fit your current shopping habits.',
+            icon: ArrowRight,
+            accent: 'blue',
+            items: recommendations?.improvements || [],
+            render: (item) => (
+                <>
+                    <div className={styles.swapRow}>
+                        <span className={styles.swapOld}>{item.original_item}</span>
+                        <ArrowRight size={15} />
+                        <span className={styles.swapNew}>{item.better_alternative}</span>
+                    </div>
+                    <p className={styles.cardReason}>{item.reason}</p>
+                    {item.suggested_store && (
+                        <span className={styles.storeTag}>
+                            <Store size={14} />
+                            Buy at {item.suggested_store}
+                        </span>
+                    )}
+                </>
+            ),
+        },
+        {
+            key: 'gaps',
+            title: 'Mind The Gaps',
+            subtitle: 'Critical nutrients or food groups missing from recent baskets.',
+            icon: AlertCircle,
+            accent: 'orange',
+            items: recommendations?.nutritional_gaps || [],
+            render: (item) => (
+                <>
+                    <div className={styles.cardHeader}>
+                        <span className={styles.cardTitle}>Missing: {item.missing_nutrient}</span>
+                    </div>
+                    <p className={styles.fixRow}>
+                        <Apple size={15} />
+                        Fix with {item.suggestion}
+                    </p>
+                    <p className={styles.cardReason}>{item.reason}</p>
+                    {item.suggested_store && (
+                        <span className={styles.storeTag}>
+                            <Store size={14} />
+                            Buy at {item.suggested_store}
+                        </span>
+                    )}
+                </>
+            ),
+        },
+    ];
+
     return (
-        <div style={{ padding: 'max(20px, var(--space-xl))', maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ marginBottom: 'var(--space-xl)', textAlign: 'center' }}>
-                <h1 style={{ fontSize: '2.4rem', fontWeight: 800, margin: '0 0 var(--space-md) 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                    <Sparkles size={36} style={{ color: 'var(--accent-pink)' }} /> 
-                    Smart Recommendations
-                </h1>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>
-                    We analyze your entire purchase history to discover brilliant nutritional pairings, identify critical gaps, and suggest effortless health improvements.
-                </p>
-                
-                {historyData.top.length > 0 && !recommendations && !generating && (
-                    <button 
-                        onClick={generateRecommendations} 
-                        className="btn-primary" 
-                        style={{ marginTop: 'var(--space-lg)', padding: '14px 32px', fontSize: '1.1rem', borderRadius: '99px', background: 'var(--accent-pink)' }}
+        <div className={styles.page}>
+            <div className={styles.hero}>
+                <div className={styles.heroText}>
+                    <span className={styles.kicker}>AI Nutrition Assistant</span>
+                    <h1 className={styles.title}>
+                        <Sparkles size={30} />
+                        Smart Recommendations
+                    </h1>
+                    <p className={styles.subtitle}>
+                        Analyze your grocery history, find repeat mistakes, and turn the next shop into a cleaner, easier decision.
+                    </p>
+                </div>
+
+                <div className={styles.heroActions}>
+                    <button
+                        onClick={generateRecommendations}
+                        className="btn-primary"
+                        disabled={generating || historyData.top.length === 0}
                     >
-                        Analyze My Buying Habits
+                        {generating ? (
+                            <>
+                                <Loader size={16} className={styles.spin} />
+                                Generating...
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles size={16} />
+                                Analyze My Buying Habits
+                            </>
+                        )}
                     </button>
-                )}
+                    <Link href="/dashboard/add" className="btn-secondary">
+                        <ShoppingCart size={16} />
+                        Log Groceries
+                    </Link>
+                </div>
             </div>
 
-            {loading && (
-                <div style={{ textAlign: 'center', padding: '100px 20px' }}>
-                    <Loader size={48} className={styles.spin} style={{ color: 'var(--accent-blue)', marginBottom: 'var(--space-md)' }} />
-                    <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>Reading your pantry history...</h3>
-                </div>
-            )}
+            <FeatureFlow
+                title="Recommendations That Feed The Next Trip"
+                description="This page is now tied into the rest of the product: review what to improve, log the next grocery session, then bring the better basket into planning."
+                items={flowItems}
+            />
 
-            {!loading && historyData.top.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '100px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-color)' }}>
-                    <TrendingUp size={48} style={{ color: 'var(--text-tertiary)', marginBottom: 'var(--space-md)' }} />
-                    <h3 style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', margin: '0 0 8px 0' }}>No History Found</h3>
-                    <p style={{ color: 'var(--text-tertiary)', fontSize: '0.95rem' }}>Add some grocery sessions first so the AI can analyze your habits.</p>
+            {loading && (
+                <div className={styles.centerState}>
+                    <Loader size={42} className={styles.spin} />
+                    <h3>Loading your purchase history</h3>
+                    <p>We need a clean view of your recent grocery data before recommendations can be generated.</p>
                 </div>
             )}
 
             {generating && (
-                <div style={{ textAlign: 'center', padding: '80px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
-                    <Sparkles size={40} style={{ color: 'var(--accent-pink)', marginBottom: 'var(--space-md)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-                    <h3 style={{ color: 'var(--text-primary)', margin: '0 0 8px 0', fontSize: '1.3rem' }}>{progressText}</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '400px', margin: '0 auto var(--space-lg)' }}>Scanning your top {historyData.top.length} most frequently purchased items to formulate the perfect health strategy.</p>
-                    <div style={{ maxWidth: 400, margin: '0 auto' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.78rem' }}>
-                            <span style={{ color: 'var(--text-tertiary)' }}>Analyzing</span>
-                            <span style={{ color: 'var(--accent-pink)', fontWeight: 700 }}>{Math.round(progress)}%</span>
+                <div className={styles.centerState}>
+                    <Sparkles size={42} className={styles.pulse} />
+                    <h3>{progressText}</h3>
+                    <p>Reviewing repeat purchases, identifying gaps, and building practical suggestions.</p>
+                    <div className={styles.progressWrap}>
+                        <div className={styles.progressMeta}>
+                            <span>Progress</span>
+                            <span>{Math.round(progress)}%</span>
                         </div>
-                        <div style={{ height: 8, background: 'var(--bg-glass)', borderRadius: 99, overflow: 'hidden' }}>
-                            <div style={{
-                                height: '100%', borderRadius: 99,
-                                background: 'linear-gradient(90deg, var(--accent-pink), var(--accent-blue))',
-                                width: `${progress}%`,
-                                transition: 'width 0.5s ease-out',
-                            }} />
+                        <div className={styles.progressTrack}>
+                            <div className={styles.progressFill} style={{ width: `${progress}%` }} />
                         </div>
                     </div>
                 </div>
             )}
 
             {error && (
-                <div style={{ background: 'var(--accent-red-dim)', border: '1px solid rgba(255, 107, 107, 0.3)', padding: '20px', borderRadius: '12px', textAlign: 'center', color: 'var(--accent-red)', marginBottom: 'var(--space-xl)' }}>
-                    <AlertCircle size={24} style={{ marginBottom: '8px' }} />
-                    <p style={{ margin: 0, fontWeight: 500 }}>{error}</p>
+                <div className={styles.errorBox}>
+                    <AlertCircle size={18} />
+                    <p>{error}</p>
+                </div>
+            )}
+
+            {!loading && !generating && !recommendations && !error && (
+                <div className={styles.centerState}>
+                    <HeartPulse size={42} className={styles.emptyIcon} />
+                    <h3>Ready to analyze your habits</h3>
+                    <p>Generate recommendations once you have enough purchase history. The results will point directly into your next grocery and meal-planning steps.</p>
                 </div>
             )}
 
             {recommendations && !generating && (
-                <div className={styles.recommendationsContainer}>
-                    
-                    {/* Overall summary card */}
+                <div className={styles.content}>
                     {recommendations.overall_advice && (
-                        <div style={{ background: 'linear-gradient(135deg, rgba(244, 114, 182, 0.1) 0%, rgba(77, 141, 255, 0.1) 100%)', border: '1px solid rgba(244, 114, 182, 0.2)', padding: 'var(--space-xl)', borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-xl)', textAlign: 'center' }}>
-                            <HeartPulse size={32} style={{ color: 'var(--accent-pink)', marginBottom: 'var(--space-md)' }} />
-                            <h2 style={{ color: 'var(--text-primary)', margin: '0 0 12px 0', fontSize: '1.5rem' }}>AI Dietitian Assessment</h2>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>"{recommendations.overall_advice}"</p>
-                        </div>
+                        <section className={styles.summaryCard}>
+                            <HeartPulse size={28} className={styles.summaryIcon} />
+                            <div>
+                                <h2>AI Dietitian Assessment</h2>
+                                <p>{recommendations.overall_advice}</p>
+                            </div>
+                        </section>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-xl)' }}>
-                        
-                        {/* Perfect Complements */}
-                        <div className={styles.recSection}>
-                            <h3 className={styles.sectionTitle} style={{ color: 'var(--accent-green)' }}>
-                                <CheckCircle2 size={22} /> Perfect Complements
-                            </h3>
-                            <p className={styles.sectionSubtitle}>Add these to what you already buy for a massive nutritional boost.</p>
-                            
-                            <div className={styles.cardsList}>
-                                {recommendations.complements?.map((comp, i) => (
-                                    <div key={i} className={styles.actionCard}>
-                                        <div className={styles.cardHeader}>
-                                            <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '1.1rem' }}>+ {comp.item_to_add}</span>
-                                            <span style={{ fontSize: '0.8rem', background: 'var(--bg-card-hover)', padding: '4px 10px', borderRadius: '99px', color: 'var(--text-secondary)' }}>Pairs with {comp.because_you_buy}</span>
-                                        </div>
-                                        <p className={styles.cardReason}>{comp.reason}</p>
-                                        {comp.suggested_store && (
-                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: 'var(--accent-pink)', background: 'rgba(244, 114, 182, 0.1)', padding: '4px 10px', borderRadius: '6px', marginTop: 'var(--space-sm)' }}>
-                                                <Store size={14} /> Buy at: {comp.suggested_store}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                    <div className={styles.sectionsGrid}>
+                        {sections.map((section) => (
+                            <section key={section.key} className={styles.recSection}>
+                                <div className={styles.sectionHeader}>
+                                    <h3 className={styles.sectionTitle}>
+                                        <section.icon size={20} className={styles[`icon_${section.accent}`]} />
+                                        {section.title}
+                                    </h3>
+                                    <p className={styles.sectionSubtitle}>{section.subtitle}</p>
+                                </div>
 
-                        {/* Healthy Swaps */}
-                        <div className={styles.recSection}>
-                            <h3 className={styles.sectionTitle} style={{ color: 'var(--accent-blue)' }}>
-                                <ArrowRight size={22} /> Healthy Improvements
-                            </h3>
-                            <p className={styles.sectionSubtitle}>Simple, effective swaps for your most frequent purchases.</p>
-
-                            <div className={styles.cardsList}>
-                                {recommendations.improvements?.map((imp, i) => (
-                                    <div key={i} className={styles.actionCard}>
-                                        <div className={styles.swapHeader}>
-                                            <span style={{ color: 'var(--text-secondary)', textDecoration: 'line-through' }}>{imp.original_item}</span>
-                                            <ArrowRight size={16} style={{ color: 'var(--accent-blue)' }} />
-                                            <span style={{ fontWeight: 600, color: 'var(--accent-blue)' }}>{imp.better_alternative}</span>
-                                        </div>
-                                        <p className={styles.cardReason}>{imp.reason}</p>
-                                        {imp.suggested_store && (
-                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: 'var(--accent-pink)', background: 'rgba(244, 114, 182, 0.1)', padding: '4px 10px', borderRadius: '6px', marginTop: 'var(--space-sm)' }}>
-                                                <Store size={14} /> Buy at: {imp.suggested_store}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Nutritional Gaps */}
-                        <div className={styles.recSection}>
-                            <h3 className={styles.sectionTitle} style={{ color: 'var(--accent-orange)' }}>
-                                <AlertCircle size={22} /> Mind The Gaps
-                            </h3>
-                            <p className={styles.sectionSubtitle}>Critical nutrients missing from your recent hauls.</p>
-
-                            <div className={styles.cardsList}>
-                                {recommendations.nutritional_gaps?.map((gap, i) => (
-                                    <div key={i} className={styles.actionCard} style={{ borderLeft: '4px solid var(--accent-orange)' }}>
-                                        <div className={styles.cardHeader} style={{ marginBottom: '8px' }}>
-                                            <span style={{ fontWeight: 600, color: 'var(--accent-orange)', fontSize: '1.05rem' }}>Missing: {gap.missing_nutrient}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: 500 }}>
-                                            <Apple size={16} style={{ color: 'var(--accent-green)' }} /> Fix with: {gap.suggestion}
-                                        </div>
-                                        <p className={styles.cardReason}>{gap.reason}</p>
-                                        {gap.suggested_store && (
-                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: 'var(--accent-pink)', background: 'rgba(244, 114, 182, 0.1)', padding: '4px 10px', borderRadius: '6px', marginTop: 'var(--space-sm)' }}>
-                                                <Store size={14} /> Buy at: {gap.suggested_store}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
+                                <div className={styles.cardsList}>
+                                    {section.items.length > 0 ? (
+                                        section.items.map((item, index) => (
+                                            <article key={index} className={`${styles.actionCard} ${styles[`card_${section.accent}`]}`}>
+                                                {section.render(item)}
+                                            </article>
+                                        ))
+                                    ) : (
+                                        <div className={styles.emptyBlock}>No suggestions in this section yet.</div>
+                                    )}
+                                </div>
+                            </section>
+                        ))}
                     </div>
                 </div>
             )}

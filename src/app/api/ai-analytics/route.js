@@ -1,24 +1,53 @@
 import { NextResponse } from 'next/server';
 import { generateJSON } from '@/lib/aiProvider';
 import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
+import { validatePeriod, validatePositiveInt, generateRequestId } from '@/lib/validation';
 
 export async function POST(request) {
+  const requestId = generateRequestId();
   // Rate limit check
-  const rl = checkRateLimit(request);
+  const rl = checkRateLimit(request, 'ai-analytics');
   if (!rl.allowed) {
     return NextResponse.json(
-      { error: 'Too many requests. Please try again later.' },
+      { error: 'Too many requests. Please try again later.', requestId },
       { status: 429, headers: rateLimitHeaders(rl) }
     );
   }
 
   try {
-    const { sessions, period = 'week', household_calorie_target = 2000, family_size = 1 } = await request.json();
-
-    if (!sessions || sessions.length === 0) {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
       return NextResponse.json(
-        { error: 'No session data provided' },
-        { status: 400 }
+        { error: 'Invalid JSON body', requestId },
+        { status: 400, headers: rateLimitHeaders(rl) }
+      );
+    }
+
+    const {
+      sessions,
+      period: rawPeriod,
+      household_calorie_target: rawCalTarget,
+      family_size: rawFamilySize,
+    } = body;
+
+    const period = validatePeriod(rawPeriod);
+    const household_calorie_target = validatePositiveInt(rawCalTarget, 500, 50000, 2000);
+    const family_size = validatePositiveInt(rawFamilySize, 1, 50, 1);
+
+    if (!Array.isArray(sessions) || sessions.length === 0) {
+      return NextResponse.json(
+        { error: 'No session data provided', requestId },
+        { status: 400, headers: rateLimitHeaders(rl) }
+      );
+    }
+
+    // Cap sessions to prevent oversized payloads
+    if (sessions.length > 200) {
+      return NextResponse.json(
+        { error: 'Too many sessions (max 200)', requestId },
+        { status: 400, headers: rateLimitHeaders(rl) }
       );
     }
 

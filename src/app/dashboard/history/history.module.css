@@ -263,6 +263,6 @@
 
 @media (max-width: 480px) {
     .summaryGrid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr; /* keep 2-col even on small phones */
     }
 }

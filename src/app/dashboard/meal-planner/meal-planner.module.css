@@ -1,0 +1,425 @@
+.page {
+    max-width: 1240px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+    flex-wrap: wrap;
+}
+
+.title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 0 0 4px;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    max-width: 700px;
+    margin: 0;
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: var(--space-lg);
+    align-items: start;
+}
+
+.controls {
+    position: sticky;
+    top: calc(var(--space-md) + env(safe-area-inset-top));
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.controlSection {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pantrySection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pantryHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+}
+
+.tinyBtn {
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.pantryGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.pantryChip {
+    padding: 8px 12px;
+    border-radius: var(--radius-full);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    transition: all var(--transition-fast);
+}
+
+.pantryChipSelected {
+    background: var(--accent-green-dim);
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+    font-weight: 700;
+}
+
+.pantryEmpty {
+    color: var(--text-tertiary);
+    font-size: 0.84rem;
+}
+
+.generateBtn {
+    width: 100%;
+}
+
+.errorText {
+    color: var(--accent-red);
+    font-size: 0.82rem;
+    text-align: center;
+    margin: 0;
+}
+
+.results {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    min-width: 0;
+}
+
+.emptyState,
+.loadingState {
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: var(--space-md);
+    padding: var(--space-3xl) var(--space-lg);
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-xl);
+}
+
+.emptyState h3,
+.loadingState h3 {
+    margin: 0;
+    font-size: 1.12rem;
+}
+
+.emptyState p,
+.loadingState p {
+    margin: 0;
+    max-width: 420px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.emptyIcon {
+    color: var(--text-muted);
+    opacity: 0.55;
+}
+
+.loadingIcon,
+.spin {
+    color: var(--accent-green);
+    animation: spin 1s linear infinite;
+}
+
+.progressWrap {
+    width: 100%;
+    max-width: 360px;
+}
+
+.progressMeta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.progressTrack {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-glass);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-full);
+    transition: width 0.5s ease-out;
+}
+
+.planStack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.summaryCard,
+.dayCard,
+.shoppingCard {
+    padding: var(--space-lg);
+}
+
+.sectionTitle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 1rem;
+    margin: 0 0 var(--space-md);
+}
+
+.summaryGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-sm);
+}
+
+.summaryMetric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--space-md);
+    background: var(--bg-glass);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.summaryMetric strong {
+    font-size: 1.2rem;
+    font-family: 'Outfit', sans-serif;
+    color: var(--accent-green);
+}
+
+.summaryMetric span {
+    font-size: 0.76rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.tipList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: var(--space-md);
+}
+
+.tipItem,
+.savingsText {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+    line-height: 1.6;
+}
+
+.savingsText {
+    color: var(--accent-yellow);
+    margin-top: var(--space-md);
+}
+
+.dayCard {
+    padding: 0;
+    overflow: hidden;
+}
+
+.dayToggle {
+    width: 100%;
+    padding: var(--space-md) var(--space-lg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    color: var(--text-primary);
+    background: transparent;
+}
+
+.dayHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.dayHeader strong {
+    font-size: 1.05rem;
+}
+
+.dayHeader span {
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+}
+
+.mealList {
+    padding: 0 var(--space-lg) var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.mealCard {
+    padding: var(--space-md);
+    border-left: 3px solid transparent;
+    border-radius: var(--radius-md);
+}
+
+.mealHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-bottom: 8px;
+}
+
+.mealType {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.mealMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+}
+
+.mealMeta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mealName {
+    margin: 0 0 6px;
+    font-size: 0.95rem;
+}
+
+.mealIngredients {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.83rem;
+    line-height: 1.6;
+}
+
+.shoppingHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+
+.shoppingCount {
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: var(--bg-glass);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.shoppingChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.shoppingChip {
+    padding: 8px 12px;
+    border-radius: var(--radius-full);
+    background: var(--accent-red-dim);
+    color: var(--accent-red);
+    border: 1px solid rgba(239, 68, 68, 0.18);
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+
+.shoppingActions {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+    margin-top: var(--space-lg);
+}
+
+@media (max-width: 960px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .controls {
+        position: static;
+    }
+}
+
+@media (max-width: 640px) {
+    .title {
+        font-size: 1.45rem;
+    }
+
+    .summaryGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .mealHeader,
+    .shoppingHeader {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .shoppingActions > a {
+        width: 100%;
+    }
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

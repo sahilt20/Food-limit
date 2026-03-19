@@ -1,6 +1,7 @@
 .dashboardContainer {
     display: flex;
     min-height: 100vh;
+    min-height: 100dvh; /* dynamic viewport height — accounts for mobile browser chrome */
     background: var(--bg-primary);
     background-image: var(--gradient-mesh);
 }
@@ -9,25 +10,33 @@
 .sidebar {
     width: var(--sidebar-width);
     height: 100vh;
+    height: 100dvh;
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 100;
-    background: rgba(12, 12, 18, 0.95);
+    z-index: 200;
+    background: rgba(12, 12, 18, 0.97);
     border-right: 1px solid var(--border-glass);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     display: flex;
     flex-direction: column;
     transition: transform var(--transition-base);
+    will-change: transform;
+    /* Safe area for notched devices */
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
 }
 
 .overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 99;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 199;
     animation: fadeIn 0.2s ease-out;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    touch-action: none;
 }
 
 .sidebarHeader {
@@ -36,6 +45,7 @@
     justify-content: space-between;
     padding: var(--space-lg) var(--space-lg);
     border-bottom: 1px solid var(--border-glass);
+    flex-shrink: 0;
 }
 
 .logo {
@@ -52,9 +62,14 @@
 .closeSidebar {
     display: none;
     color: var(--text-secondary);
-    padding: var(--space-xs);
+    padding: var(--space-sm);
     border-radius: var(--radius-sm);
     transition: all var(--transition-fast);
+    /* Proper touch target */
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
 }
 
 .closeSidebar:hover {
@@ -68,8 +83,9 @@
     padding: var(--space-md);
     display: flex;
     flex-direction: column;
-    gap: var(--space-xs);
+    gap: 2px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .navItem {
@@ -79,11 +95,13 @@
     padding: 12px 16px;
     border-radius: var(--radius-md);
     color: var(--text-secondary);
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-weight: 500;
-    transition: all var(--transition-base);
+    transition: all var(--transition-fast);
     text-decoration: none;
     position: relative;
+    /* Touch target */
+    min-height: 44px;
 }
 
 .navItem:hover {
@@ -116,6 +134,8 @@
 .sidebarFooter {
     padding: var(--space-md) var(--space-lg);
     border-top: 1px solid var(--border-glass);
+    flex-shrink: 0;
+    padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom));
 }
 
 .userInfo {
@@ -171,7 +191,8 @@
     color: var(--text-secondary);
     font-size: 0.85rem;
     border-radius: var(--radius-sm);
-    transition: all var(--transition-base);
+    transition: all var(--transition-fast);
+    min-height: 44px;
 }
 
 .logoutBtn:hover {
@@ -184,6 +205,7 @@
     flex: 1;
     margin-left: var(--sidebar-width);
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
 }
@@ -195,6 +217,9 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 var(--space-xl);
+    /* Safe area on left for landscape notch */
+    padding-left: calc(var(--space-xl) + env(safe-area-inset-left));
+    padding-right: calc(var(--space-xl) + env(safe-area-inset-right));
     border-bottom: 1px solid var(--border-glass);
     background: rgba(10, 10, 15, 0.6);
     backdrop-filter: blur(16px);
@@ -202,6 +227,13 @@
     position: sticky;
     top: 0;
     z-index: 50;
+    /* Top safe area for notch */
+    padding-top: env(safe-area-inset-top);
+    height: calc(var(--topbar-height) + env(safe-area-inset-top));
+}
+
+[data-theme="light"] .topbar {
+    background: rgba(248, 249, 250, 0.85);
 }
 
 .menuBtn {
@@ -210,6 +242,10 @@
     padding: var(--space-sm);
     border-radius: var(--radius-sm);
     transition: background var(--transition-fast);
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
 }
 
 .menuBtn:hover {
@@ -218,15 +254,29 @@
 
 .topbarTitle {
     font-family: 'Outfit', sans-serif;
-    font-weight: 600;
-    font-size: 1.1rem;
+    font-weight: 700;
+    font-size: 1.05rem;
     color: var(--text-primary);
+}
+
+.topbarInfo {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.topbarLabel {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    font-weight: 700;
 }
 
 .topbarRight {
     display: flex;
     align-items: center;
-    gap: var(--space-md);
+    gap: var(--space-sm);
 }
 
 .themeToggle {
@@ -240,6 +290,8 @@
     justify-content: center;
     transition: all var(--transition-fast);
     cursor: pointer;
+    min-width: 40px;
+    min-height: 40px;
 }
 
 .themeToggle:hover {
@@ -264,13 +316,69 @@
     font-weight: 700;
     font-size: 0.9rem;
     color: #fff;
+    flex-shrink: 0;
 }
 
 /* ========== Page Content ========== */
 .pageContent {
     flex: 1;
     padding: var(--space-xl);
-    animation: fadeIn 0.4s ease-out;
+    animation: fadeIn 0.3s ease-out;
+    /* Bottom padding accounts for fixed bottom nav on mobile */
+}
+
+/* ========== Bottom Navigation (mobile only) ========== */
+.bottomNav {
+    display: none; /* hidden on desktop */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(12, 12, 18, 0.97);
+    border-top: 1px solid var(--border-glass);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    /* Safe area for home indicator */
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    flex-direction: row;
+    align-items: stretch;
+}
+
+[data-theme="light"] .bottomNav {
+    background: rgba(248, 249, 250, 0.97);
+}
+
+.bottomNavItem {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 10px 4px;
+    color: var(--text-tertiary);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+    border: none;
+    background: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 56px;
+}
+
+.bottomNavItem:hover,
+.bottomNavItem:active {
+    color: var(--text-primary);
+}
+
+.bottomNavActive {
+    color: var(--accent-green) !important;
 }
 
 /* ========== Mobile ========== */
@@ -297,9 +405,34 @@
 
     .pageContent {
         padding: var(--space-md);
+        /* Make room for fixed bottom nav (56px) + home indicator */
+        padding-bottom: calc(var(--space-md) + 56px + env(safe-area-inset-bottom));
     }
-    
+
     .topbar {
         padding: 0 var(--space-md);
+        padding-left: calc(var(--space-md) + env(safe-area-inset-left));
+        padding-right: calc(var(--space-md) + env(safe-area-inset-right));
+        padding-top: env(safe-area-inset-top);
+        height: calc(56px + env(safe-area-inset-top));
+    }
+
+    .topbarTitle {
+        font-size: 0.95rem;
+    }
+
+    .topbarLabel {
+        font-size: 0.64rem;
+    }
+
+    .bottomNav {
+        display: flex;
+    }
+}
+
+/* Landscape phone — reduce sidebar width, allow smaller topbar */
+@media (max-width: 768px) and (orientation: landscape) {
+    .pageContent {
+        padding-bottom: calc(var(--space-md) + 52px + env(safe-area-inset-bottom));
     }
 }

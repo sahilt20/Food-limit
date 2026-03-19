@@ -1,0 +1,444 @@
+.page {
+    padding: var(--space-lg);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* ── Header ─────────────────────────────────── */
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+    flex-wrap: wrap;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.headerIcon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    background: var(--accent-green-dim);
+    color: var(--accent-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+}
+
+.subtitle {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.headerControls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.inputGroup {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+}
+
+.inputIcon {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.dateInput {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    outline: none;
+    min-width: 130px;
+}
+
+.selectWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.rangeSelect {
+    padding: 9px 32px 9px 14px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: none;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.rangeSelect:focus {
+    border-color: var(--accent-green);
+}
+
+.selectIcon {
+    position: absolute;
+    right: 10px;
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.refreshBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.refreshBtn:hover { background: var(--bg-glass-hover); color: var(--text-primary); }
+
+.spinning { animation: spin 1s linear infinite; }
+
+/* Grade badge */
+.gradeBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+.grade_green  { background: var(--accent-green-dim);  color: var(--accent-green);  border-color: rgba(0,212,170,0.3); }
+.grade_blue   { background: var(--accent-blue-dim);   color: var(--accent-blue);   border-color: rgba(77,141,255,0.3); }
+.grade_yellow { background: var(--accent-yellow-dim); color: var(--accent-yellow); border-color: rgba(251,191,36,0.3); }
+.grade_red    { background: var(--accent-red-dim);    color: var(--accent-red);    border-color: rgba(239,68,68,0.3); }
+
+/* ── Error / Loading ────────────────────────── */
+.errorBanner {
+    background: var(--accent-red-dim);
+    color: var(--accent-red);
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    margin-bottom: var(--space-lg);
+    font-size: 0.9rem;
+}
+
+.loadingGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-md);
+}
+
+.skeletonCard { height: 140px; border-radius: var(--radius-lg); }
+
+/* ── Top section: ring + macros ─────────────── */
+.topSection {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-lg);
+    align-items: start;
+}
+
+/* Calorie ring card */
+.ringCard {
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.sectionTitle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    width: 100%;
+}
+
+.ringWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ringSvg { display: block; }
+
+.ringProgress {
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ringCenter {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.ringConsumed {
+    font-size: 1.6rem;
+    font-weight: 800;
+    font-family: 'Outfit', sans-serif;
+    line-height: 1;
+}
+
+.ringLabel {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+}
+
+.ringPct {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.ringStatus {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Macros grid */
+.macrosGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+}
+
+.macroCard {
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.macroHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.macroIcon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.macroIcon_blue   { background: var(--accent-blue-dim);   color: var(--accent-blue); }
+.macroIcon_orange { background: var(--accent-orange-dim); color: var(--accent-orange); }
+.macroIcon_purple { background: var(--accent-purple-dim); color: var(--accent-purple); }
+.macroIcon_green  { background: var(--accent-green-dim);  color: var(--accent-green); }
+
+.macroLabel {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.macroValues {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.macroVal { font-size: 1.4rem; font-weight: 800; font-family: 'Outfit', sans-serif; }
+.macroVal_blue   { color: var(--accent-blue); }
+.macroVal_orange { color: var(--accent-orange); }
+.macroVal_purple { color: var(--accent-purple); }
+.macroVal_green  { color: var(--accent-green); }
+
+.macroGoal { font-size: 0.8rem; color: var(--text-tertiary); }
+
+.macroPct {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Progress bars */
+.progressTrack {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-glass);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fill_blue   { background: var(--accent-blue); }
+.fill_orange { background: var(--accent-orange); }
+.fill_purple { background: var(--accent-purple); }
+.fill_green  { background: var(--accent-green); }
+.fill_yellow { background: var(--accent-yellow); }
+.fill_red    { background: var(--accent-red); }
+
+/* ── Micronutrients ─────────────────────────── */
+.microSection {
+    padding: var(--space-lg);
+    margin-bottom: var(--space-lg);
+}
+
+.microGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-md) var(--space-xl);
+    margin-top: var(--space-md);
+}
+
+.microItem { display: flex; flex-direction: column; gap: 4px; }
+
+.microHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.microLabel {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.microRight { display: flex; align-items: center; gap: 8px; }
+
+.microPct { font-size: 0.8rem; font-weight: 700; }
+.microPct_green  { color: var(--accent-green); }
+.microPct_yellow { color: var(--accent-yellow); }
+.microPct_red    { color: var(--accent-red); }
+
+.microVal { font-size: 0.75rem; color: var(--text-tertiary); }
+
+.microGoalText { font-size: 0.72rem; color: var(--text-muted); }
+
+/* ── Foods logged ───────────────────────────── */
+.foodsSection {
+    padding: var(--space-lg);
+}
+
+.foodList { margin-top: var(--space-md); display: flex; flex-direction: column; gap: 2px; }
+
+.foodItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: 10px var(--space-sm);
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
+}
+
+.foodItem:hover { background: var(--bg-glass); }
+
+.healthDot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+}
+
+.dot_green  { background: var(--accent-green); }
+.dot_yellow { background: var(--accent-yellow); }
+.dot_red    { background: var(--accent-red); }
+
+.foodInfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+
+.foodName  { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.foodQty   { font-size: 0.75rem; color: var(--text-tertiary); }
+
+.foodNutrition {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    flex-shrink: 0;
+}
+
+.foodCal   { font-size: 0.85rem; font-weight: 700; color: var(--accent-orange); min-width: 70px; text-align: right; }
+.foodProt  { font-size: 0.78rem; color: var(--accent-blue); min-width: 65px; display: none; }
+
+.foodContribBar {
+    width: 60px;
+    height: 4px;
+    background: var(--bg-glass);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.foodContribFill { height: 100%; background: var(--accent-green); border-radius: var(--radius-full); }
+
+.foodContribPct { font-size: 0.72rem; color: var(--text-tertiary); min-width: 28px; }
+
+.emptyState {
+    text-align: center;
+    padding: var(--space-3xl) var(--space-lg);
+    color: var(--text-secondary);
+}
+
+.emptyIcon { opacity: 0.3; margin-bottom: var(--space-md); }
+.emptyHint { font-size: 0.85rem; color: var(--text-tertiary); margin-top: 4px; }
+
+/* ── Responsive ─────────────────────────────── */
+@media (max-width: 900px) {
+    .topSection { grid-template-columns: 1fr; }
+    .ringCard { padding: var(--space-md); }
+}
+
+@media (max-width: 640px) {
+    .page { padding: var(--space-md); }
+    .title { font-size: 1.3rem; }
+    .macrosGrid { grid-template-columns: 1fr 1fr; }
+    .headerControls { width: 100%; }
+    .foodProt { display: none; }
+    .foodContribBar { display: none; }
+    .foodContribPct { display: none; }
+}
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

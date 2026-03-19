@@ -152,6 +152,14 @@ button, a, input, select, textarea {
 
 html {
   scroll-behavior: smooth;
+  /* Prevent iOS bounce while keeping smooth scrolling */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Safe area support for notched devices */
+body {
+  padding-top: env(safe-area-inset-top);
 }
 
 body {
@@ -162,6 +170,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  /* Prevent pull-to-refresh on mobile when not needed */
+  overscroll-behavior-y: contain;
 }
 
 h1,
@@ -199,11 +209,18 @@ select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  /* Dark mode chevron */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a0a0b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 1rem center;
   background-size: 1em;
-  padding-right: 2.5rem; /* Make room for the arrow */
+  padding-right: 2.5rem;
+  min-height: 44px; /* touch target */
+  cursor: pointer;
+}
+
+[data-theme="light"] select {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
 }
 
 select option {
@@ -234,7 +251,7 @@ select option {
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
-  padding: 12px 28px;
+  padding: 12px 24px;
   background: var(--gradient-primary);
   color: #fff;
   font-weight: 600;
@@ -245,6 +262,9 @@ select option {
   transition: all var(--transition-base);
   position: relative;
   overflow: hidden;
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .btn-primary::before {
@@ -274,7 +294,7 @@ select option {
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
-  padding: 12px 28px;
+  padding: 12px 24px;
   background: var(--bg-glass);
   color: var(--text-primary);
   font-weight: 500;
@@ -283,6 +303,9 @@ select option {
   border: 1px solid var(--border-glass);
   cursor: pointer;
   transition: all var(--transition-base);
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .btn-secondary:hover {
@@ -315,12 +338,13 @@ select option {
 /* ========== Input ========== */
 .input-field {
   width: 100%;
-  padding: 14px 18px;
+  padding: 12px 16px;
   background: var(--bg-glass);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: 1rem; /* 16px — prevents iOS zoom on focus */
+  min-height: 44px;
   transition: all var(--transition-base);
 }
 
@@ -530,6 +554,50 @@ select option {
   opacity: 0;
 }
 
+/* ========== Accessibility ========== */
+/* Skip to main content — hidden until focused by keyboard */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  z-index: 10000;
+  padding: 0.6rem 1.2rem;
+  background: var(--accent-green);
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: top var(--transition-fast);
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* Keyboard focus ring — only shown for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--accent-green);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default focus outline for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Respect user's reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ========== Scrollbar ========== */
 ::-webkit-scrollbar {
   width: 6px;
@@ -549,9 +617,22 @@ select option {
   background: var(--text-muted);
 }
 
-/* ========== Responsive ========== */
+/* ========== Mobile global fixes ========== */
 @media (max-width: 768px) {
-  /* Sidebar width is preserved for mobile drawer, margin-left is handled in layout.module.css */
+  /* Prevent iOS auto-zoom on inputs (requires font-size >= 16px) */
+  input, select, textarea {
+    font-size: 1rem !important;
+  }
+
+  /* Slightly larger minimum tap target for all buttons */
+  button {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 /* ========== Loading skeleton ========== */

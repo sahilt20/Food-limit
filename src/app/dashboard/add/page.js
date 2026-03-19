@@ -4,6 +4,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import { lookupNutrition, getAllFoods, getCategories, NUTRIENT_INFO } from '@/lib/nutritionDB';
 import { formatCurrency } from '@/lib/currency';
+import Image from 'next/image';
+import FeatureFlow from '@/components/FeatureFlow';
 import {
     Upload,
     FileText,
@@ -842,6 +844,36 @@ export default function AddGroceriesPage() {
     const totalFat = nutritionResults.reduce((s, r) => s + (r.nutrition?.fat_g || 0), 0);
     const totalSugar = nutritionResults.reduce((s, r) => s + (r.nutrition?.sugar_g || 0), 0);
     const totalSalt = nutritionResults.reduce((s, r) => s + ((r.nutrition?.sodium_mg || 0) * SODIUM_TO_SALT_MULTIPLIER / 1000), 0);
+    const flowItems = [
+        {
+            href: '/dashboard/add',
+            label: activeTab === 'receipt' ? 'Scan or enter groceries' : 'Enter groceries',
+            description: 'Start with a receipt photo or manual item entry, then analyze the basket.',
+            icon: activeTab === 'receipt' ? Upload : FileText,
+            state: 'current',
+        },
+        {
+            href: '/dashboard',
+            label: 'Review nutrition overview',
+            description: 'Check how the new session changes spend, calories, and nutrient coverage.',
+            icon: TrendingUp,
+            state: analyzed ? 'done' : 'next',
+        },
+        {
+            href: '/dashboard/meal-planner',
+            label: 'Turn groceries into meals',
+            description: 'Use the saved basket to generate a meal plan from what you actually bought.',
+            icon: ArrowRight,
+            state: 'next',
+        },
+        {
+            href: '/dashboard/recommendations',
+            label: 'Improve the next trip',
+            description: 'Use AI feedback to spot healthier swaps and recurring gaps.',
+            icon: Heart,
+            state: 'next',
+        },
+    ];
 
     if (saved) {
         return (
@@ -886,6 +918,12 @@ export default function AddGroceriesPage() {
                 <h1 className={styles.pageTitle}>Add Groceries</h1>
                 <p className={styles.pageSubtitle}>Enter your grocery items and get detailed nutrition analysis</p>
             </div>
+
+            <FeatureFlow
+                title="Log Once, Use Everywhere"
+                description="This page feeds the dashboard, meal planner, shopping list, and recommendations, so the easiest path is to save a clean grocery session first."
+                items={flowItems}
+            />
 
             {/* Tabs */}
             <div className={styles.tabs}>
@@ -941,7 +979,14 @@ export default function AddGroceriesPage() {
                             </div>
 
                             <div className={styles.previewContainer}>
-                                <img src={receiptPreview} alt="Receipt" className={styles.previewImage} />
+                                <Image
+                                    src={receiptPreview}
+                                    alt="Receipt"
+                                    className={styles.previewImage}
+                                    width={1200}
+                                    height={1600}
+                                    unoptimized
+                                />
                             </div>
 
                             {/* OCR Progress */}
