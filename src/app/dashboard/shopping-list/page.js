@@ -97,7 +97,7 @@ export default function ShoppingListPage() {
         });
     };
 
-    /* ── Import from Meal Plan ─────────────── */
+    /* ── Import from AI Planner ────────────── */
     const loadMealPlan = useCallback(async () => {
         setLoadingMeal(true); setMealError('');
         try {
@@ -112,7 +112,7 @@ export default function ShoppingListPage() {
             if (data?.content?.shopping_list?.length > 0) {
                 setMealPlanItems(data.content.shopping_list);
             } else {
-                setMealError('No saved meal plan found. Generate one in the Meal Planner first.');
+                setMealError('No saved pantry plan found. Generate one in AI Planner first.');
             }
         } catch (err) {
             setMealError(err.message || 'Failed to load meal plan');
@@ -202,9 +202,9 @@ export default function ShoppingListPage() {
             state: 'current',
         },
         {
-            href: '/dashboard/meal-planner',
-            label: 'Import from meal plan',
-            description: 'Pull missing items from your saved meal plan instead of rebuilding the list.',
+            href: '/dashboard/diet-plans?mode=pantry',
+            label: 'Import from AI Planner',
+            description: 'Pull missing items from your saved pantry plan instead of rebuilding the list.',
             icon: Import,
             state: mealPlanItems.length ? 'done' : 'next',
         },
@@ -223,7 +223,7 @@ export default function ShoppingListPage() {
             <div className={styles.header}>
                 <div>
                     <h1 className={styles.title}><ShoppingCart size={22} /> Smart Shopping List</h1>
-                    <p className={styles.subtitle}>Build your list, import from meal plan, or restock expiring items.</p>
+                    <p className={styles.subtitle}>Build your list, import from AI Planner, or restock expiring items.</p>
                 </div>
                 <div className={styles.headerActions}>
                     <button className={styles.iconBtn} onClick={copyList} title="Copy list as text">

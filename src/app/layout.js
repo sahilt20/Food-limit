@@ -12,7 +12,7 @@ export const metadata = {
         'Track your grocery shopping, analyze nutritional content with AI, and visualize detailed macro & micronutrient data. Free, open-source, privacy-first.',
     keywords: [
         'food tracker', 'nutrition tracker', 'grocery tracker', 'health', 'diet',
-        'vitamins', 'minerals', 'meal planner', 'calorie counter', 'AI nutrition',
+        'vitamins', 'minerals', 'AI planner', 'calorie counter', 'AI nutrition',
     ],
     authors: [{ name: 'FoodLimit' }],
     creator: 'FoodLimit',

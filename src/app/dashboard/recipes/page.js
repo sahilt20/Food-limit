@@ -216,9 +216,9 @@ export default function RecipesPage() {
             state: recipes ? 'done' : 'next',
         },
         {
-            href: '/dashboard/meal-planner',
+            href: '/dashboard/diet-plans?mode=pantry',
             label: 'Turn ideas into a plan',
-            description: 'When one recipe is not enough, move into the meal planner with the same pantry context.',
+            description: 'When one recipe is not enough, move into AI Planner with the same pantry context.',
             icon: Sparkles,
             state: 'next',
         },
@@ -237,7 +237,7 @@ export default function RecipesPage() {
 
             <FeatureFlow
                 title="Cook From What You Bought"
-                description="Recipe suggestions connect directly into the shopping list and meal planner so you can go from idea to action without re-entering ingredients."
+                description="Recipe suggestions connect directly into the shopping list and AI Planner so you can go from idea to action without re-entering ingredients."
                 items={flowItems}
             />
 

@@ -67,6 +67,32 @@
     min-height: 100%;
 }
 
+.modeTabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.modeTab {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    font-weight: 700;
+}
+
+.modeTabActive {
+    color: #fff;
+    background: linear-gradient(135deg, rgba(0, 212, 170, 0.2), rgba(77, 141, 255, 0.18));
+    border-color: rgba(0, 212, 170, 0.35);
+    box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.18) inset;
+}
+
 .heroMetric {
     display: flex;
     align-items: center;
@@ -135,6 +161,13 @@
     gap: 6px;
 }
 
+.controlHint {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.6;
+}
+
 .textarea {
     min-height: 92px;
     resize: vertical;
@@ -157,6 +190,60 @@
 
 .secondaryBtn {
     flex: 1;
+}
+
+.pantrySection {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pantryHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+}
+
+.tinyBtn {
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.pantryGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.pantryChip {
+    padding: 8px 12px;
+    border-radius: var(--radius-full);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    transition: all var(--transition-fast);
+}
+
+.pantryChipSelected {
+    background: var(--accent-green-dim);
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+    font-weight: 700;
+}
+
+.pantryEmpty {
+    color: var(--text-tertiary);
+    font-size: 0.84rem;
 }
 
 .results,
@@ -491,12 +578,26 @@
     gap: 8px;
 }
 
-.mealMeta span {
+.mealMeta span,
+.mealMetaChips span {
     padding: 7px 10px;
     border-radius: var(--radius-full);
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-secondary);
     font-size: 0.78rem;
+}
+
+.mealMetaChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.mealDescription {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+    line-height: 1.6;
 }
 
 .mealBlock {
@@ -601,6 +702,11 @@
     font-size: 1rem;
 }
 
+.shoppingCount {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+
 .shoppingItems {
     display: flex;
     flex-direction: column;
@@ -638,6 +744,29 @@
     padding: 8px 10px;
     font-size: 0.74rem;
     color: var(--text-secondary);
+}
+
+.shoppingChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: var(--space-lg);
+}
+
+.shoppingChip {
+    padding: 10px 12px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+
+.shoppingActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: var(--space-lg);
 }
 
 .guideList {
@@ -695,6 +824,7 @@
     .summaryHeader,
     .sectionTop,
     .historyTop,
+    .pantryHeader,
     .shoppingItemTop,
     .dayToggle,
     .mealTop,

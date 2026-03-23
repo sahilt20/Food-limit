@@ -190,9 +190,9 @@ export default function RecommendationsPage() {
             state: recommendations ? 'done' : 'next',
         },
         {
-            href: '/dashboard/meal-planner',
-            label: 'Turn advice into meals',
-            description: 'Use better ingredients in the planner once you know what to add or replace.',
+            href: '/dashboard/diet-plans?mode=pantry',
+            label: 'Turn advice into a plan',
+            description: 'Use better ingredients in AI Planner once you know what to add or replace.',
             icon: CalendarDays,
             state: 'next',
         },

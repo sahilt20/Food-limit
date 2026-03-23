@@ -303,9 +303,9 @@ export default function DashboardPage() {
             state: allSessions.length ? 'done' : 'current',
         },
         {
-            href: '/dashboard/meal-planner',
-            label: 'Build a meal plan',
-            description: 'Convert what you bought into meals instead of starting from scratch.',
+            href: '/dashboard/diet-plans?mode=pantry',
+            label: 'Open AI Planner',
+            description: 'Convert what you bought into a pantry-based plan instead of starting from scratch.',
             icon: Calendar,
             state: 'next',
         },

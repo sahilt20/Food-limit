@@ -860,9 +860,9 @@ export default function AddGroceriesPage() {
             state: analyzed ? 'done' : 'next',
         },
         {
-            href: '/dashboard/meal-planner',
-            label: 'Turn groceries into meals',
-            description: 'Use the saved basket to generate a meal plan from what you actually bought.',
+            href: '/dashboard/diet-plans?mode=pantry',
+            label: 'Plan from these groceries',
+            description: 'Use the saved basket to generate a pantry-based AI plan from what you actually bought.',
             icon: ArrowRight,
             state: 'next',
         },
@@ -921,7 +921,7 @@ export default function AddGroceriesPage() {
 
             <FeatureFlow
                 title="Log Once, Use Everywhere"
-                description="This page feeds the dashboard, meal planner, shopping list, and recommendations, so the easiest path is to save a clean grocery session first."
+                description="This page feeds the dashboard, AI Planner, shopping list, and recommendations, so the easiest path is to save a clean grocery session first."
                 items={flowItems}
             />
 
