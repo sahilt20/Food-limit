@@ -15,6 +15,7 @@ const ROUTE_CONFIGS = {
     'analyze-receipt':      { windowMs: 60_000, max: 5   },  // vision — expensive
     'generate-recipes':     { windowMs: 60_000, max: 5   },
     'generate-meal-plan':   { windowMs: 60_000, max: 5   },
+    'generate-diet-plan':   { windowMs: 60_000, max: 5   },
     'ai-analytics':         { windowMs: 60_000, max: 5   },
     'recommend-foods':      { windowMs: 60_000, max: 10  },
     'history-recommendations': { windowMs: 60_000, max: 5 },

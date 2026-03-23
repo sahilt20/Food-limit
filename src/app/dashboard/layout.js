@@ -26,6 +26,7 @@ import {
     ShoppingCart,
     BarChart2,
     MoreHorizontal,
+    Apple,
 } from 'lucide-react';
 import styles from './layout.module.css';
 
@@ -35,6 +36,7 @@ const navItems = [
     { href: '/dashboard/history', label: 'History', icon: History },
     { href: '/dashboard/recipes', label: 'AI Recipes', icon: ChefHat },
     { href: '/dashboard/meal-planner', label: 'Meal Planner', icon: CalendarDays },
+    { href: '/dashboard/diet-plans', label: 'AI Diet Plans', icon: Apple },
     { href: '/dashboard/recommendations', label: 'Recommendations', icon: Lightbulb },
     { href: '/dashboard/goals',         label: 'Intake & Goals',   icon: Target },
     { href: '/dashboard/shopping-list', label: 'Shopping List',    icon: ShoppingCart },

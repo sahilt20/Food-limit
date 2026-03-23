@@ -1,6 +1,6 @@
 /**
  * Multi-provider AI system with automatic fallback.
- * Chain: Google Gemini → OpenAI → Ollama (local) → template fallback
+ * Chain: Nvidia → Google Gemini → OpenAI
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -14,23 +14,166 @@ export const PROVIDERS = {
     LOCAL: 'local',
 };
 
+const TEXT_TIMEOUT_MS = 28000;
+const VISION_TIMEOUT_MS = 24000;
+
+function withTimeout(promise, timeoutMs, label) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => {
+            setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+        }),
+    ]);
+}
+
+function getNvidiaApiKey(envKey) {
+    return process.env[envKey] || process.env.NVIDIA_API_KEY || '';
+}
+
+function getNvidiaTextModelConfigs() {
+    return [
+        {
+            model: 'z-ai/glm4.7',
+            apiKey: getNvidiaApiKey('NVIDIA_GLM47_API_KEY'),
+            temperature: 1,
+            max_tokens: 2600,
+            top_p: 1,
+            timeoutMs: 22000,
+            extra_body: {
+                chat_template_kwargs: {
+                    enable_thinking: false,
+                    clear_thinking: false,
+                },
+            },
+        },
+        {
+            model: 'qwen/qwen3.5-122b-a10b',
+            apiKey: getNvidiaApiKey('NVIDIA_QWEN_API_KEY'),
+            temperature: 0.6,
+            max_tokens: 2800,
+            timeoutMs: 22000,
+            extra_body: {
+                chat_template_kwargs: {
+                    enable_thinking: false,
+                },
+            },
+        },
+        {
+            model: 'deepseek-ai/deepseek-v3.2',
+            apiKey: getNvidiaApiKey('NVIDIA_DEEPSEEK_V32_API_KEY'),
+            temperature: 0.4,
+            max_tokens: 2400,
+            timeoutMs: 20000,
+            extra_body: {
+                chat_template_kwargs: {
+                    thinking: false,
+                },
+            },
+        },
+        {
+            model: 'deepseek-ai/deepseek-v3.1',
+            apiKey: getNvidiaApiKey('NVIDIA_DEEPSEEK_V31_API_KEY'),
+            temperature: 0.2,
+            max_tokens: 2200,
+            top_p: 0.7,
+            timeoutMs: 18000,
+            extra_body: {
+                chat_template_kwargs: {
+                    thinking: false,
+                },
+            },
+        },
+    ];
+}
+
 /**
  * Parse JSON from AI response text (handles markdown fences, etc.)
  */
+function normalizeJSONCandidate(text) {
+    return text
+        .replace(/^\uFEFF/, '')
+        .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '')
+        .replace(/,\s*([}\]])/g, '$1')
+        .trim();
+}
+
+function tryParseCandidate(text) {
+    return JSON.parse(normalizeJSONCandidate(text));
+}
+
+function extractBalancedJSONObject(text) {
+    const starts = [];
+
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] === '{') starts.push(i);
+    }
+
+    for (const start of starts) {
+        let depth = 0;
+        let inString = false;
+        let escaped = false;
+
+        for (let i = start; i < text.length; i++) {
+            const char = text[i];
+
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (char === '\\') {
+                    escaped = true;
+                } else if (char === '"') {
+                    inString = false;
+                }
+                continue;
+            }
+
+            if (char === '"') {
+                inString = true;
+                continue;
+            }
+
+            if (char === '{') depth += 1;
+            if (char === '}') depth -= 1;
+
+            if (depth === 0) {
+                const candidate = text.slice(start, i + 1);
+                try {
+                    return tryParseCandidate(candidate);
+                } catch {
+                    break;
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
 function parseJSONResponse(text) {
     // Try direct parse
     try {
-        return JSON.parse(text);
+        return tryParseCandidate(text);
     } catch {
         // Try extracting from code fences
         const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (jsonMatch) {
-            return JSON.parse(jsonMatch[1].trim());
+            return tryParseCandidate(jsonMatch[1].trim());
         }
-        // Try finding JSON object
-        const objMatch = text.match(/\{[\s\S]*\}/);
-        if (objMatch) {
-            return JSON.parse(objMatch[0]);
+
+        const balancedObject = extractBalancedJSONObject(text);
+        if (balancedObject) {
+            return balancedObject;
+        }
+
+        const objMatches = text.match(/\{[\s\S]*?\}/g);
+        if (objMatches) {
+            for (const match of objMatches) {
+                try {
+                    return tryParseCandidate(match);
+                } catch {
+                    // keep trying candidates
+                }
+            }
         }
         throw new Error('Could not parse AI response as JSON');
     }
@@ -59,17 +202,21 @@ function isQuotaError(error) {
 async function geminiGenerateText(prompt, apiKey) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent(prompt);
+    const result = await withTimeout(model.generateContent(prompt), TEXT_TIMEOUT_MS, 'Gemini text request');
     return result.response.text();
 }
 
 async function geminiGenerateVision(prompt, imageBase64, mimeType, apiKey) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent([
-        prompt,
-        { inlineData: { data: imageBase64, mimeType } },
-    ]);
+    const result = await withTimeout(
+        model.generateContent([
+            prompt,
+            { inlineData: { data: imageBase64, mimeType } },
+        ]),
+        VISION_TIMEOUT_MS,
+        'Gemini vision request'
+    );
     return result.response.text();
 }
 
@@ -77,65 +224,89 @@ async function geminiGenerateVision(prompt, imageBase64, mimeType, apiKey) {
 
 async function openaiGenerateText(prompt, apiKey) {
     const openai = new OpenAI({ apiKey });
-    const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-            { role: 'system', content: 'You are a helpful nutrition and grocery analytics AI. Always respond with valid JSON only, no markdown formatting.' },
-            { role: 'user', content: prompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 4096,
-    });
+    const completion = await withTimeout(
+        openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                { role: 'system', content: 'You are a helpful nutrition and grocery analytics AI. Always respond with valid JSON only, no markdown formatting.' },
+                { role: 'user', content: prompt },
+            ],
+            temperature: 0.7,
+            max_tokens: 4096,
+        }),
+        TEXT_TIMEOUT_MS,
+        'OpenAI text request'
+    );
     return completion.choices[0].message.content;
 }
 
 async function openaiGenerateVision(prompt, imageBase64, mimeType, apiKey) {
     const openai = new OpenAI({ apiKey });
-    const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-            {
-                role: 'user',
-                content: [
-                    { type: 'text', text: prompt },
-                    {
-                        type: 'image_url',
-                        image_url: {
-                            url: `data:${mimeType};base64,${imageBase64}`,
+    const completion = await withTimeout(
+        openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: prompt },
+                        {
+                            type: 'image_url',
+                            image_url: {
+                                url: `data:${mimeType};base64,${imageBase64}`,
+                            },
                         },
-                    },
-                ],
-            },
-        ],
-        temperature: 0.7,
-        max_tokens: 4096,
-    });
+                    ],
+                },
+            ],
+            temperature: 0.7,
+            max_tokens: 4096,
+        }),
+        VISION_TIMEOUT_MS,
+        'OpenAI vision request'
+    );
     return completion.choices[0].message.content;
 }
 
 // ─── Nvidia Provider ───
 
-async function nvidiaGenerateText(prompt, apiKey) {
-    const nvidia = new OpenAI({ 
-        apiKey, 
-        baseURL: 'https://integrate.api.nvidia.com/v1',
-    });
-    const completion = await nvidia.chat.completions.create({
-        model: 'deepseek-ai/deepseek-v3.2',
-        messages: [
-            { role: 'system', content: 'You are a helpful nutrition and grocery analytics AI. Always respond with valid JSON only, no markdown formatting.' },
-            { role: 'user', content: prompt }
-        ],
-        temperature: 1,
-        max_tokens: 8192,
-        top_p: 0.95,
-        extra_body: {
-            "chat_template_kwargs": {
-                "thinking": true
-            }
+async function nvidiaGenerateText(prompt) {
+    const modelConfigs = getNvidiaTextModelConfigs();
+    const errors = [];
+
+    for (const config of modelConfigs) {
+        if (!config.apiKey) {
+            errors.push(`${config.model}: No API key configured`);
+            continue;
         }
-    });
-    return completion.choices[0].message.content;
+
+        try {
+            const nvidia = new OpenAI({
+                apiKey: config.apiKey,
+                baseURL: 'https://integrate.api.nvidia.com/v1',
+            });
+            const completion = await withTimeout(
+                nvidia.chat.completions.create({
+                    model: config.model,
+                    messages: [
+                        { role: 'system', content: 'You are a helpful nutrition and grocery analytics AI. Always respond with valid JSON only, no markdown formatting.' },
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: config.temperature,
+                    max_tokens: config.max_tokens,
+                    top_p: config.top_p ?? 0.95,
+                    extra_body: config.extra_body,
+                }),
+                config.timeoutMs ?? TEXT_TIMEOUT_MS,
+                `${config.model} request`
+            );
+            return completion.choices[0].message.content;
+        } catch (error) {
+            errors.push(`${config.model}: ${error.message}`);
+        }
+    }
+
+    throw new Error(`Nvidia text models failed. ${errors.join(' | ')}`);
 }
 
 async function nvidiaGenerateVision(prompt, imageBase64, mimeType, apiKey) {
@@ -144,25 +315,29 @@ async function nvidiaGenerateVision(prompt, imageBase64, mimeType, apiKey) {
         baseURL: 'https://integrate.api.nvidia.com/v1',
     });
     // Fallback vision model on Nvidia standard catalog, e.g., meta/llama-3.2-90b-vision-instruct
-    const completion = await nvidia.chat.completions.create({
-        model: 'meta/llama-3.2-90b-vision-instruct',
-        messages: [
-            {
-                role: 'user',
-                content: [
-                    { type: 'text', text: prompt },
-                    {
-                        type: 'image_url',
-                        image_url: {
-                            url: `data:${mimeType};base64,${imageBase64}`,
+    const completion = await withTimeout(
+        nvidia.chat.completions.create({
+            model: 'meta/llama-3.2-90b-vision-instruct',
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: prompt },
+                        {
+                            type: 'image_url',
+                            image_url: {
+                                url: `data:${mimeType};base64,${imageBase64}`,
+                            },
                         },
-                    },
-                ],
-            },
-        ],
-        temperature: 0.15,
-        max_tokens: 2048,
-    });
+                    ],
+                },
+            ],
+            temperature: 0.15,
+            max_tokens: 2048,
+        }),
+        VISION_TIMEOUT_MS,
+        'Nvidia vision request'
+    );
     return completion.choices[0].message.content;
 }
 
@@ -170,16 +345,31 @@ async function nvidiaGenerateVision(prompt, imageBase64, mimeType, apiKey) {
 
 /**
  * Generate a text response with automatic provider fallback.
- * Chain: Gemini → OpenAI → Nvidia → throw
+ * Chain: Nvidia → Gemini → OpenAI → throw
  * Returns { text, provider }
  */
 export async function generateText(prompt) {
     const geminiKey = process.env.GEMINI_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
-    const nvidiaKey = process.env.NVIDIA_API_KEY;
+    const hasNvidiaTextKey = getNvidiaTextModelConfigs().some((config) => Boolean(config.apiKey));
     const errors = [];
 
-    // 1. Try Gemini
+    // 1. Try Nvidia
+    if (hasNvidiaTextKey) {
+        try {
+            const text = await nvidiaGenerateText(prompt);
+            return { text, provider: PROVIDERS.NVIDIA };
+        } catch (err) {
+            errors.push(`Nvidia: ${err.message}`);
+            if (!isQuotaError(err)) {
+                console.warn('Nvidia error, falling back to Gemini:', err.message);
+            }
+        }
+    } else {
+        errors.push('Nvidia: No text model API key configured');
+    }
+
+    // 2. Try Gemini
     if (geminiKey) {
         try {
             const text = await geminiGenerateText(prompt, geminiKey);
@@ -187,38 +377,25 @@ export async function generateText(prompt) {
         } catch (err) {
             errors.push(`Gemini: ${err.message}`);
             if (!isQuotaError(err)) {
-                console.warn('Gemini non-quota error, falling back:', err.message);
+                console.warn('Gemini non-quota error, falling back to OpenAI:', err.message);
             }
         }
     }
 
-    // 2. Try OpenAI
+    // 3. Try OpenAI
     if (openaiKey) {
         try {
             const text = await openaiGenerateText(prompt, openaiKey);
             return { text, provider: PROVIDERS.OPENAI };
         } catch (err) {
             errors.push(`OpenAI: ${err.message}`);
-            console.warn('OpenAI error, falling back to Nvidia:', err.message);
+            console.warn('OpenAI error:', err.message);
         }
-    }
-
-    // 3. Try Nvidia
-    if (nvidiaKey) {
-        try {
-            const text = await nvidiaGenerateText(prompt, nvidiaKey);
-            return { text, provider: PROVIDERS.NVIDIA };
-        } catch (err) {
-            errors.push(`Nvidia: ${err.message}`);
-            console.warn('Nvidia error:', err.message);
-        }
-    } else {
-        errors.push('Nvidia: No API key configured');
     }
 
     // 4. None available
     throw new Error(
-        `All AI providers failed. ${errors.join(' | ')}${!geminiKey && !openaiKey && !nvidiaKey ? ' No API keys configured — add GEMINI_API_KEY, OPENAI_API_KEY, or NVIDIA_API_KEY to .env.local.' : ''}`
+        `All AI providers failed. ${errors.join(' | ')}${!geminiKey && !openaiKey && !hasNvidiaTextKey ? ' No API keys configured — add NVIDIA_QWEN_API_KEY / NVIDIA_DEEPSEEK_V32_API_KEY / NVIDIA_DEEPSEEK_V31_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY to .env.local.' : ''}`
     );
 }
 
@@ -235,16 +412,31 @@ export async function generateJSON(prompt) {
 
 /**
  * Generate a vision (image analysis) response with fallback.
- * Chain: Gemini → OpenAI → Nvidia → throw
+ * Chain: Nvidia → Gemini → OpenAI → throw
  * Returns { text, provider }
  */
 export async function generateVision(prompt, imageBase64, mimeType) {
     const geminiKey = process.env.GEMINI_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
-    const nvidiaKey = process.env.NVIDIA_API_KEY;
+    const nvidiaKey = getNvidiaApiKey('NVIDIA_VISION_API_KEY');
     const errors = [];
 
-    // 1. Try Gemini
+    // 1. Try Nvidia vision
+    if (nvidiaKey) {
+        try {
+            const text = await nvidiaGenerateVision(prompt, imageBase64, mimeType, nvidiaKey);
+            return { text, provider: PROVIDERS.NVIDIA };
+        } catch (err) {
+            errors.push(`Nvidia: ${err.message}`);
+            if (!isQuotaError(err)) {
+                console.warn('Nvidia vision error, falling back to Gemini:', err.message);
+            }
+        }
+    } else {
+        errors.push('Nvidia: No API key configured');
+    }
+
+    // 2. Try Gemini
     if (geminiKey) {
         try {
             const text = await geminiGenerateVision(prompt, imageBase64, mimeType, geminiKey);
@@ -252,12 +444,12 @@ export async function generateVision(prompt, imageBase64, mimeType) {
         } catch (err) {
             errors.push(`Gemini: ${err.message}`);
             if (!isQuotaError(err)) {
-                console.warn('Gemini vision non-quota error:', err.message);
+                console.warn('Gemini vision non-quota error, falling back to OpenAI:', err.message);
             }
         }
     }
 
-    // 2. Try OpenAI
+    // 3. Try OpenAI
     if (openaiKey) {
         try {
             const text = await openaiGenerateVision(prompt, imageBase64, mimeType, openaiKey);
@@ -266,19 +458,6 @@ export async function generateVision(prompt, imageBase64, mimeType) {
             errors.push(`OpenAI: ${err.message}`);
             console.warn('OpenAI vision error:', err.message);
         }
-    }
-
-    // 3. Try Nvidia vision
-    if (nvidiaKey) {
-        try {
-            const text = await nvidiaGenerateVision(prompt, imageBase64, mimeType, nvidiaKey);
-            return { text, provider: PROVIDERS.NVIDIA };
-        } catch (err) {
-            errors.push(`Nvidia: ${err.message}`);
-            console.warn('Nvidia vision error:', err.message);
-        }
-    } else {
-        errors.push('Nvidia: No API key configured');
     }
 
     // 4. None available
@@ -302,13 +481,12 @@ export async function generateVisionJSON(prompt, imageBase64, mimeType) {
     } catch (parseErr) {
         // If Nvidia returned text instead of JSON, pipe through text model for structuring
         if (provider === PROVIDERS.NVIDIA) {
-            const nvidiaKey = process.env.NVIDIA_API_KEY;
+            const hasNvidiaTextKey = getNvidiaTextModelConfigs().some((config) => Boolean(config.apiKey));
             console.log('Nvidia vision returned text, structuring via text model...');
             try {
-                if (nvidiaKey) {
+                if (hasNvidiaTextKey) {
                     const structureResponse = await nvidiaGenerateText(
-                        `${prompt}\n\nHere is the text extracted from a receipt image:\n\n${text}\n\nBased on this extracted text, return ONLY valid JSON. No markdown, no explanations, no code fences.`,
-                        nvidiaKey
+                        `${prompt}\n\nHere is the text extracted from a receipt image:\n\n${text}\n\nBased on this extracted text, return ONLY valid JSON. No markdown, no explanations, no code fences.`
                     );
                     const structured = parseJSONResponse(structureResponse);
                     return { data: structured, provider: PROVIDERS.NVIDIA };

@@ -12,7 +12,14 @@ export async function GET() {
     const providers = {
         gemini:  !!process.env.GEMINI_API_KEY,
         openai:  !!process.env.OPENAI_API_KEY,
-        nvidia:  !!process.env.NVIDIA_API_KEY,
+        nvidia:  !!(
+            process.env.NVIDIA_API_KEY ||
+            process.env.NVIDIA_GLM47_API_KEY ||
+            process.env.NVIDIA_QWEN_API_KEY ||
+            process.env.NVIDIA_DEEPSEEK_V32_API_KEY ||
+            process.env.NVIDIA_DEEPSEEK_V31_API_KEY ||
+            process.env.NVIDIA_VISION_API_KEY
+        ),
     };
 
     const supabaseConfigured = !!(

@@ -8,6 +8,7 @@ const AiOperationsContext = createContext(null);
 const CONTENT_LABELS = {
     recipes: 'Recipes',
     meal_plan: 'Meal Plan',
+    diet_plan: 'Diet Plan',
     recommendations: 'Recommendations',
 };
 
