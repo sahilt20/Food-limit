@@ -20,7 +20,7 @@ export default function WeightOnboarding() {
   const [targetDate, setTargetDate] = useState('');
   const [strategy, setStrategy] = useState('');
   const [activityLevel, setActivityLevel] = useState('moderately_active');
-  const [weightUnit, setWeightUnit] = useState('lbs');
+  const [weightUnit, setWeightUnit] = useState('kg');
 
   // Helper to convert lbs to kg
   const toKg = (value, unit) => {
@@ -227,8 +227,8 @@ export default function WeightOnboarding() {
         <div className="form-group">
           <label>Weight Unit</label>
           <select value={weightUnit} onChange={(e) => setWeightUnit(e.target.value)}>
-            <option value="lbs">Pounds (lbs)</option>
             <option value="kg">Kilograms (kg)</option>
+            <option value="lbs">Pounds (lbs)</option>
           </select>
         </div>
         

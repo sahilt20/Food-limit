@@ -36,7 +36,7 @@ export default function WeightTracker() {
   const [weightLogs, setWeightLogs] = useState([]);
   const [goal, setGoal] = useState(null);
   const [progress, setProgress] = useState(null);
-  const [weightUnit, setWeightUnit] = useState('lbs');
+  const [weightUnit, setWeightUnit] = useState('kg');
 
   const supabase = createClient();
 
@@ -56,7 +56,7 @@ export default function WeightTracker() {
         .eq('id', user.id)
         .single();
       
-      if (profile) setWeightUnit(profile.weight_unit || 'lbs');
+      if (profile) setWeightUnit(profile.weight_unit || 'kg');
 
       // Load weight logs
       const { data: logs } = await supabase

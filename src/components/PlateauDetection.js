@@ -61,10 +61,10 @@ export default function PlateauDetection() {
         const plateauData = {
           detected: true,
           days: weights.length,
-          avgWeight: (avgWeight * 2.20462).toFixed(1),
+          avgWeight: avgWeight.toFixed(1),
           weightRange: {
-            min: (Math.min(...weightValues) * 2.20462).toFixed(1),
-            max: (Math.max(...weightValues) * 2.20462).toFixed(1)
+            min: Math.min(...weightValues).toFixed(1),
+            max: Math.max(...weightValues).toFixed(1)
           },
           startDate: weights[0].logged_at,
           currentCalories: nutrition?.[0]?.total_calories || 0,
@@ -276,7 +276,7 @@ export default function PlateauDetection() {
         <div className="alert-icon">⚠️</div>
         <div className="alert-content">
           <h2>Plateau Detected</h2>
-          <p>Your weight has been stable for {plateau.days} days ({plateau.weightRange.min} - {plateau.weightRange.max} lbs)</p>
+          <p>Your weight has been stable for {plateau.days} days ({plateau.weightRange.min} - {plateau.weightRange.max} kg)</p>
         </div>
       </div>
 

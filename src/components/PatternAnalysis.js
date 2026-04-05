@@ -203,13 +203,13 @@ export default function PatternAnalysis() {
     const factors = [];
 
     if (weightData.length >= 2) {
-      const weightLoss = (weightData[0].weight_kg - weightData[weightData.length - 1].weight_kg) * 2.20462;
-      
+      const weightLoss = weightData[0].weight_kg - weightData[weightData.length - 1].weight_kg;
+
       if (weightLoss > 0) {
         factors.push({
           icon: '📉',
           title: 'Weight Loss Achieved',
-          value: `${weightLoss.toFixed(1)} lbs`,
+          value: `${weightLoss.toFixed(1)} kg`,
           description: 'Keep doing what you\'re doing!'
         });
       }
@@ -266,8 +266,8 @@ export default function PatternAnalysis() {
       charts.weightTrend = {
         labels: weightData.map(w => new Date(w.logged_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
         datasets: [{
-          label: 'Weight (lbs)',
-          data: weightData.map(w => (w.weight_kg * 2.20462).toFixed(1)),
+          label: 'Weight (kg)',
+          data: weightData.map(w => w.weight_kg.toFixed(1)),
           borderColor: '#3b82f6',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
           tension: 0.4,

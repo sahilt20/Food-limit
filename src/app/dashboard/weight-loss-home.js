@@ -101,9 +101,9 @@ export default function WeightLossDashboard() {
   }
 
   // Calculate progress
-  const currentWeight = recentWeight ? recentWeight.weight_kg * 2.20462 : 0;
-  const startWeight = weightGoal?.start_weight_kg * 2.20462 || 0;
-  const targetWeight = weightGoal?.target_weight_kg * 2.20462 || 0;
+  const currentWeight = recentWeight ? recentWeight.weight_kg : 0;
+  const startWeight = weightGoal?.start_weight_kg || 0;
+  const targetWeight = weightGoal?.target_weight_kg || 0;
   const weightLost = startWeight - currentWeight;
   const totalToLose = startWeight - targetWeight;
   const progressPercent = totalToLose > 0 ? Math.min((weightLost / totalToLose) * 100, 100) : 0;
@@ -149,19 +149,19 @@ export default function WeightLossDashboard() {
           <div className="weight-stats">
             <div className="weight-stat">
               <span className="label">Current</span>
-              <span className="value">{currentWeight.toFixed(1)} lbs</span>
+              <span className="value">{currentWeight.toFixed(1)} kg</span>
             </div>
             <div className="weight-stat">
               <span className="label">Lost</span>
-              <span className="value success">{weightLost.toFixed(1)} lbs</span>
+              <span className="value success">{weightLost.toFixed(1)} kg</span>
             </div>
             <div className="weight-stat">
               <span className="label">Target</span>
-              <span className="value">{targetWeight.toFixed(1)} lbs</span>
+              <span className="value">{targetWeight.toFixed(1)} kg</span>
             </div>
             <div className="weight-stat">
               <span className="label">To Go</span>
-              <span className="value">{(totalToLose - weightLost).toFixed(1)} lbs</span>
+              <span className="value">{(totalToLose - weightLost).toFixed(1)} kg</span>
             </div>
           </div>
 

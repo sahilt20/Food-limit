@@ -23,10 +23,10 @@ export async function POST(request) {
       await awardAchievement(supabase, userId, 'getting_started');
       unlocked.push(ACHIEVEMENTS.getting_started);
     } else if (event === 'weight_logged' && data?.weightLost) {
-      const lbs = data.weightLost * 2.20462;
-      if (lbs >= 1) await awardAchievement(supabase, userId, 'first_pound');
-      if (lbs >= 5) await awardAchievement(supabase, userId, 'five_pounds');
-      if (lbs >= 10) await awardAchievement(supabase, userId, 'ten_pounds');
+      const kg = data.weightLost; // already in kg
+      if (kg >= 0.5) await awardAchievement(supabase, userId, 'first_pound');
+      if (kg >= 2.5) await awardAchievement(supabase, userId, 'five_pounds');
+      if (kg >= 5)   await awardAchievement(supabase, userId, 'ten_pounds');
     }
 
     return NextResponse.json({ success: true, unlocked });

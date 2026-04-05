@@ -107,8 +107,7 @@ export default function AIWeeklyInsights() {
     // Summary stats
     if (weights.length >= 2) {
       const weightChange = weights[weights.length - 1].weight_kg - weights[0].weight_kg;
-      const weightChangeLbs = (weightChange * 2.20462).toFixed(1);
-      analysis.summary.weightChange = weightChangeLbs;
+      analysis.summary.weightChange = Math.abs(weightChange).toFixed(1);
       analysis.summary.weightDirection = weightChange < 0 ? 'lost' : 'gained';
     }
 
@@ -148,7 +147,7 @@ export default function AIWeeklyInsights() {
       analysis.wins.push({
         icon: '📉',
         title: 'Progress Made',
-        description: `Lost ${Math.abs(analysis.summary.weightChange)} lbs this week`
+        description: `Lost ${analysis.summary.weightChange} kg this week`
       });
     }
 
@@ -208,13 +207,11 @@ export default function AIWeeklyInsights() {
     // Predictions
     if (goal && weights.length >= 2) {
       const weightChangeKg = weights[weights.length - 1].weight_kg - weights[0].weight_kg;
-      const weeklyRate = weightChangeKg * 2.20462; // lbs per week
-      const currentWeightLbs = weights[weights.length - 1].weight_kg * 2.20462;
-      const targetWeightLbs = goal.target_weight_kg * 2.20462;
-      const remainingLbs = currentWeightLbs - targetWeightLbs;
-      
+      const weeklyRate = weightChangeKg; // kg per week
+      const remainingKg = weights[weights.length - 1].weight_kg - goal.target_weight_kg;
+
       if (weeklyRate < 0) {
-        const weeksToGoal = Math.ceil(Math.abs(remainingLbs / weeklyRate));
+        const weeksToGoal = Math.ceil(Math.abs(remainingKg / weeklyRate));
         analysis.predictions.weeksToGoal = weeksToGoal;
         analysis.predictions.targetDate = new Date(new Date().setDate(new Date().getDate() + weeksToGoal * 7)).toLocaleDateString();
         analysis.predictions.totalLoss = Math.abs(weeklyRate * weeksToGoal).toFixed(1);
@@ -313,7 +310,7 @@ export default function AIWeeklyInsights() {
           <div className="summary-icon">⚖️</div>
           <div className="summary-value">
             {insights.summary.weightChange 
-              ? `${insights.summary.weightDirection === 'lost' ? '-' : '+'}${Math.abs(insights.summary.weightChange)} lbs`
+              ? `${insights.summary.weightDirection === 'lost' ? '-' : '+'}${insights.summary.weightChange} kg`
               : 'No data'
             }
           </div>
@@ -388,7 +385,7 @@ export default function AIWeeklyInsights() {
               <strong>{insights.predictions.weeksToGoal} weeks</strong> (around {insights.predictions.targetDate}).
             </p>
             <p className="prediction-details">
-              Estimated total loss: <strong>{insights.predictions.totalLoss} lbs</strong>
+              Estimated total loss: <strong>{insights.predictions.totalLoss} kg</strong>
             </p>
           </div>
         </div>

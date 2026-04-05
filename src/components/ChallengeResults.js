@@ -311,7 +311,7 @@ export default function ChallengeResults({ challengeId }) {
 
 function getMetricUnit(metric) {
   const units = {
-    'weight_loss': 'lbs',
+    'weight_loss': 'kg',
     'calorie_streak': 'days',
     'meals_logged': 'meals',
     'step_count': 'steps',
