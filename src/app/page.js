@@ -7,13 +7,18 @@ import {
   BarChart3,
   Shield,
   Zap,
-  Apple,
   Brain,
   TrendingUp,
   ShoppingCart,
   Heart,
   CheckCircle2,
   Download,
+  Scale,
+  Trophy,
+  Users,
+  Swords,
+  Clock,
+  Lightbulb,
 } from 'lucide-react';
 import styles from './home.module.css';
 
@@ -33,16 +38,58 @@ const features = [
     bg: 'var(--accent-blue-dim)',
   },
   {
-    icon: BarChart3,
-    title: 'Beautiful Dashboards',
-    desc: 'Interactive charts showing calorie trends, macro splits, spending patterns, and micronutrient coverage.',
+    icon: Scale,
+    title: 'Weight & Health Tracking',
+    desc: 'Log weight, body fat, and mood daily. AI-powered plateau detection and weekly pattern insights.',
+    color: 'var(--accent-green)',
+    bg: 'var(--accent-green-dim)',
+  },
+  {
+    icon: Trophy,
+    title: 'Achievements & Streaks',
+    desc: 'Earn bronze to diamond badges across 6 categories. Build streaks and unlock gamification rewards.',
+    color: 'var(--accent-yellow)',
+    bg: 'var(--accent-yellow-dim)',
+  },
+  {
+    icon: Swords,
+    title: 'Daily Challenges',
+    desc: 'Complete daily and weekly nutrition challenges. Compete head-to-head and climb leaderboards.',
+    color: 'var(--accent-orange)',
+    bg: 'var(--accent-orange-dim)',
+  },
+  {
+    icon: Users,
+    title: 'Social & Friends',
+    desc: 'Follow friends, share progress to your feed, and get notified of their milestones in real time.',
     color: 'var(--accent-purple)',
     bg: 'var(--accent-purple-dim)',
   },
   {
+    icon: BarChart3,
+    title: 'Advanced Analytics',
+    desc: 'Interactive charts showing calorie trends, macro splits, spending patterns, and AI weekly insights.',
+    color: 'var(--accent-blue)',
+    bg: 'var(--accent-blue-dim)',
+  },
+  {
+    icon: Clock,
+    title: 'Expiry Tracker',
+    desc: 'Never waste food again. Track expiry dates and get alerts before items go bad.',
+    color: 'var(--accent-pink)',
+    bg: 'var(--accent-pink-dim)',
+  },
+  {
+    icon: Lightbulb,
+    title: 'AI Recommendations',
+    desc: 'Personalized food suggestions based on your history, goals, and nutritional gaps.',
+    color: 'var(--accent-green)',
+    bg: 'var(--accent-green-dim)',
+  },
+  {
     icon: Heart,
-    title: 'Health Score & Goals',
-    desc: 'Track your overall nutrition health score, set daily calorie goals, and earn achievement badges.',
+    title: 'Goals & Diet Plans',
+    desc: 'Set intake goals, generate AI meal plans, and get smart shopping list suggestions.',
     color: 'var(--accent-pink)',
     bg: 'var(--accent-pink-dim)',
   },
@@ -63,9 +110,9 @@ const features = [
 ];
 
 const nutrients = [
-  'Calories', 'Protein', 'Carbs', 'Fat', 'Fiber', 'Vitamin A',
-  'Vitamin C', 'Vitamin D', 'Vitamin B12', 'Iron', 'Calcium',
-  'Zinc', 'Magnesium', 'Folate', 'Potassium', 'Omega-3',
+  'Calories', 'Protein', 'Carbs', 'Fat', 'Fiber', 'Weight Tracking',
+  'Achievements', 'Challenges', 'Leaderboards', 'Friends', 'Social Feed',
+  'AI Insights', 'Meal Planning', 'Expiry Alerts', 'Streak Tracking', 'Omega-3',
 ];
 
 export default function HomePage() {
@@ -108,8 +155,8 @@ export default function HomePage() {
           <span className={styles.gradientText}>Know Your Nutrition.</span>
         </h1>
         <p className={styles.heroDesc}>
-          The smartest way to analyze your grocery shopping. Get detailed macro & micro nutrient
-          breakdowns, beautiful dashboards, and AI-powered insights — completely free.
+          The all-in-one nutrition platform. Track food, weight, and health goals — compete with
+          friends, earn achievements, and get AI-powered insights — completely free.
         </p>
         <div className={styles.heroCTA}>
           <Link href="/register" className="btn-primary" style={{ padding: '16px 36px', fontSize: '1rem' }}>
@@ -155,7 +202,7 @@ export default function HomePage() {
       {/* How It Works */}
       <section className={styles.howItWorks}>
         <h2 className={styles.sectionTitle}>How It Works</h2>
-        <p className={styles.sectionSubtitle}>Three simple steps to nutrition intelligence</p>
+        <p className={styles.sectionSubtitle}>Three simple steps to total health intelligence</p>
         <div className={styles.stepsGrid}>
           <div className={styles.step}>
             <div className={styles.stepNumber}>1</div>

@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './challenge-results.css';
 
 export default function ChallengeResults({ challengeId }) {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [challenge, setChallenge] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [winner, setWinner] = useState(null);

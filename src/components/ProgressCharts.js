@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
 import { Line, Bar, Pie } from 'react-chartjs-2';
 import './progress-charts.css';
@@ -8,7 +8,7 @@ import './progress-charts.css';
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend);
 
 export default function ProgressCharts() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [timeRange, setTimeRange] = useState('month'); // week, month, 3month, all
   const [weightData, setWeightData] = useState([]);
   const [calorieData, setCalorieData] = useState([]);

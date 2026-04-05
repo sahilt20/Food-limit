@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './social-feed.css';
 
 export default function SocialFeed() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newPost, setNewPost] = useState('');
@@ -34,36 +34,46 @@ export default function SocialFeed() {
 
       const { data, error } = await supabase
         .from('social_feed')
-        .select(`
-          *,
-          profiles!social_feed_user_id_fkey (
-            id,
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
+
+      // Fetch profiles for all post authors
+      const userIds = [...new Set(data.map(p => p.user_id))];
+      const { data: profiles } = userIds.length > 0
+        ? await supabase.from('profiles').select('id, full_name, avatar_url').in('id', userIds)
+        : { data: [] };
+      const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
 
       // Get comments for each post
       const enrichedPosts = await Promise.all(
         data.map(async (post) => {
           const { data: comments } = await supabase
             .from('social_feed_comments')
-            .select(`
-              *,
-              profiles (
-                full_name,
-                avatar_url
-              )
-            `)
+            .select('id, user_id, comment_text, created_at')
             .eq('post_id', post.id)
             .order('created_at', { ascending: true })
             .limit(3);
 
-          return { ...post, recent_comments: comments || [] };
+          // Enrich comments with profile data
+          const commentUserIds = [...new Set((comments || []).map(c => c.user_id))];
+          const { data: commentProfiles } = commentUserIds.length > 0
+            ? await supabase.from('profiles').select('id, full_name, avatar_url').in('id', commentUserIds)
+            : { data: [] };
+          const commentProfileMap = Object.fromEntries((commentProfiles || []).map(p => [p.id, p]));
+
+          const enrichedComments = (comments || []).map(c => ({
+            ...c,
+            profiles: commentProfileMap[c.user_id] || null
+          }));
+
+          return {
+            ...post,
+            profiles: profileMap[post.user_id] || null,
+            recent_comments: enrichedComments
+          };
         })
       );
 

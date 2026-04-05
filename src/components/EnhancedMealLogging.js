@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './enhanced-meal-logging.css';
 
 export default function EnhancedMealLogging() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [mealType, setMealType] = useState('breakfast');
   const [recentMeals, setRecentMeals] = useState([]);
   const [favorites, setFavorites] = useState([]);

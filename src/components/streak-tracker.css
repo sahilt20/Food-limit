@@ -1,253 +1,288 @@
+/* Streak Tracker — FoodLimit Design System */
 .streak-tracker-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  animation: fadeInUp 0.5s ease-out forwards;
 }
 
 .streak-tracker-container h2 {
-  font-size: 2rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.8rem;
   font-weight: 700;
   text-align: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 6px;
+  color: var(--text-primary);
 }
 
 .streak-subtitle {
   text-align: center;
-  color: #6b7280;
-  margin-bottom: 2rem;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-xl);
+  font-size: 0.9rem;
 }
 
 .streaks-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
 }
 
 .streak-card {
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border: 2px solid #e5e7eb;
-  transition: all 0.3s;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.streak-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
 }
 
 .streak-card.active {
-  border-color: #10b981;
-  background: linear-gradient(135deg, #ffffff, #f0fdf4);
+  border-color: var(--accent-green);
+  background: var(--accent-green-dim);
+  box-shadow: var(--shadow-glow-green);
 }
 
 .streak-card.inactive {
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 .streak-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
 }
 
 .streak-icon {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .flame {
-  font-size: 4rem;
+  font-size: 3.5rem;
   position: absolute;
 }
 
 .streak-count {
   position: relative;
   z-index: 1;
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  color: white;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
 .streak-title h3 {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  margin-bottom: 0.25rem;
+  margin-bottom: 3px;
+  color: var(--text-primary);
 }
 
 .streak-title p {
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
   margin: 0;
 }
 
 .streak-progress {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-lg);
 }
 
 .progress-bar {
   width: 100%;
-  height: 12px;
-  background: #e5e7eb;
-  border-radius: 6px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-full);
   overflow: hidden;
-  margin-bottom: 0.5rem;
+  margin-bottom: 6px;
 }
 
 .progress-fill {
   height: 100%;
-  border-radius: 6px;
-  transition: width 0.5s ease;
+  border-radius: var(--radius-full);
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .progress-fill.tracking {
-  background: linear-gradient(90deg, #f59e0b, #d97706);
+  background: linear-gradient(90deg, var(--accent-yellow), #d97706);
 }
 
 .progress-fill.calorie {
-  background: linear-gradient(90deg, #10b981, #059669);
+  background: var(--gradient-primary);
 }
 
 .progress-fill.weighin {
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  background: linear-gradient(90deg, var(--accent-blue), #2563eb);
 }
 
 .progress-text {
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
   text-align: center;
 }
 
 .streak-stats {
   display: grid;
-  gap: 1rem;
+  gap: var(--space-sm);
 }
 
 .stat {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem;
-  background: #f9fafb;
-  border-radius: 8px;
+  padding: 10px var(--space-md);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
 }
 
 .stat-label {
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
 }
 
 .stat-value {
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
+  font-size: 0.9rem;
 }
 
 .streak-warning {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: #fef2f2;
-  color: #dc2626;
-  border-radius: 8px;
+  margin-top: var(--space-md);
+  padding: 10px var(--space-md);
+  background: var(--accent-red-dim);
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+  border-radius: var(--radius-md);
   text-align: center;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
 }
 
 .streak-achievement {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  color: #92400e;
-  border-radius: 8px;
+  margin-top: var(--space-md);
+  padding: 10px var(--space-md);
+  background: var(--accent-yellow-dim);
+  border: 1px solid var(--accent-yellow);
+  color: var(--accent-yellow);
+  border-radius: var(--radius-md);
   text-align: center;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
 }
 
 .streak-motivation {
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-bottom: var(--space-xl);
+  backdrop-filter: blur(20px);
   text-align: center;
+  box-shadow: var(--shadow-sm);
 }
 
 .streak-motivation h3 {
-  font-size: 1.5rem;
-  margin-bottom: 1.5rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: var(--space-lg);
+  color: var(--text-primary);
 }
 
 .tips {
   display: grid;
-  gap: 1rem;
+  gap: var(--space-md);
 }
 
 .tip {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: #f9fafb;
-  border-radius: 12px;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 .tip-icon {
-  font-size: 2rem;
+  font-size: 1.8rem;
+  flex-shrink: 0;
 }
 
 .milestones-section {
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-sm);
 }
 
 .milestones-section h3 {
-  font-size: 1.5rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.3rem;
   font-weight: 600;
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-lg);
   text-align: center;
+  color: var(--text-primary);
 }
 
 .milestones-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-lg);
 }
 
 .milestone {
   text-align: center;
-  padding: 1.5rem 1rem;
-  background: linear-gradient(135deg, #f9fafb, #f3f4f6);
-  border-radius: 12px;
-  border: 2px solid #e5e7eb;
+  padding: var(--space-lg) var(--space-md);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.milestone:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--accent-green);
+  transform: translateY(-2px);
 }
 
 .milestone-icon {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
+  font-size: 2.5rem;
+  margin-bottom: 6px;
 }
 
 .milestone-label {
   font-weight: 600;
-  margin-bottom: 0.25rem;
-  color: #111827;
+  margin-bottom: 3px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
 }
 
 .milestone-reward {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 @media (max-width: 768px) {
-  .streak-tracker-container {
-    padding: 1rem;
-  }
-
   .streaks-grid {
     grid-template-columns: 1fr;
   }

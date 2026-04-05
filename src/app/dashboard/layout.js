@@ -26,6 +26,10 @@ import {
     ShoppingCart,
     BarChart2,
     MoreHorizontal,
+    Scale,
+    Users,
+    Trophy,
+    Swords,
 } from 'lucide-react';
 import styles from './layout.module.css';
 
@@ -40,6 +44,10 @@ const navItems = [
     { href: '/dashboard/shopping-list', label: 'Shopping List',    icon: ShoppingCart },
     { href: '/dashboard/analytics',     label: 'Analytics',        icon: BarChart2 },
     { href: '/dashboard/expiry',        label: 'Expiry Tracker',   icon: Clock },
+    { href: '/dashboard/weight',        label: 'Weight & Health',  icon: Scale },
+    { href: '/dashboard/achievements',  label: 'Achievements',     icon: Trophy },
+    { href: '/dashboard/challenges',    label: 'Challenges',       icon: Swords },
+    { href: '/dashboard/social',        label: 'Social',           icon: Users },
     { href: '/dashboard/profile',       label: 'Profile',          icon: UserCircle },
 ];
 

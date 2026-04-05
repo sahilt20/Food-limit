@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './daily-challenges.css';
 
 // Pre-defined challenge templates
@@ -23,7 +23,7 @@ const CHALLENGE_TEMPLATES = {
 };
 
 export default function DailyChallenges() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [activeChallenges, setActiveChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -75,7 +75,7 @@ export default function DailyChallenges() {
       const { data: existing } = await supabase
         .from('challenges')
         .select('id')
-        .eq('creator_id', user.id)
+        .eq('creator_user_id', user.id)
         .eq('challenge_type', 'daily')
         .gte('start_date', today + 'T00:00:00')
         .lte('start_date', today + 'T23:59:59');
@@ -96,7 +96,9 @@ export default function DailyChallenges() {
           name: template.title,
           description: template.description,
           challenge_type: 'daily',
-          creator_id: user.id,
+          goal_metric: 'meals_logged',
+          target_value: 3,
+          creator_user_id: user.id,
           start_date: new Date(today + 'T00:00:00').toISOString(),
           end_date: new Date(today + 'T23:59:59').toISOString(),
           status: 'active',
@@ -143,13 +145,13 @@ export default function DailyChallenges() {
 
         const { data: goal } = await supabase
           .from('weight_goals')
-          .select('daily_calorie_target')
+          .select('daily_calorie_goal')
           .eq('user_id', user.id)
           .eq('status', 'active')
           .single();
 
         if (!summary || !goal) return 0;
-        const calorieProgress = (summary.total_calories / goal.daily_calorie_target) * 100;
+        const calorieProgress = (summary.total_calories / goal.daily_calorie_goal) * 100;
         return Math.abs(100 - calorieProgress) < 10 ? 100 : Math.min(calorieProgress, 90);
 
       case 'log_weight':
@@ -173,13 +175,13 @@ export default function DailyChallenges() {
 
         const { data: proteinGoal } = await supabase
           .from('weight_goals')
-          .select('protein_target_g')
+          .select('daily_protein_goal_g')
           .eq('user_id', user.id)
           .eq('status', 'active')
           .single();
 
         if (!proteinSummary || !proteinGoal) return 0;
-        return Math.min(100, (proteinSummary.total_protein_g / proteinGoal.protein_target_g) * 100);
+        return Math.min(100, (proteinSummary.total_protein_g / proteinGoal.daily_protein_goal_g) * 100);
 
       default:
         return 0;
@@ -197,15 +199,24 @@ export default function DailyChallenges() {
         .update({ status: 'completed' })
         .eq('id', challenge.id);
 
-      // Award XP and points
+      // Award XP and points via direct update
       const xpReward = challenge.metadata?.xp_reward || 0;
       const pointsReward = challenge.metadata?.points_reward || 0;
 
-      await supabase.rpc('increment_user_stats', {
-        p_user_id: user.id,
-        p_xp: xpReward,
-        p_points: pointsReward
-      });
+      const { data: currentStats } = await supabase
+        .from('user_stats')
+        .select('total_xp, total_points')
+        .eq('user_id', user.id)
+        .single();
+
+      await supabase
+        .from('user_stats')
+        .update({
+          total_xp: (currentStats?.total_xp || 0) + xpReward,
+          total_points: (currentStats?.total_points || 0) + pointsReward,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
 
       // Award achievement if first challenge completed
       await fetch('/api/achievements/check', {

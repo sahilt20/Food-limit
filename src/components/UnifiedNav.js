@@ -1,12 +1,12 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './unified-nav.css';
 
 export default function UnifiedNav() {
   const pathname = usePathname();
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [user, setUser] = useState(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -117,7 +117,7 @@ export default function UnifiedNav() {
               />
               <div className="user-info">
                 <div className="user-name">{user?.full_name || 'User'}</div>
-                <div className="user-level">Level {user?.current_level || 1}</div>
+                <div className="user-level">Level 1</div>
               </div>
             </div>
 

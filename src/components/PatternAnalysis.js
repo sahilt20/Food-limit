@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
 import { Line, Bar, Pie } from 'react-chartjs-2';
 import './pattern-analysis.css';
@@ -8,7 +8,7 @@ import './pattern-analysis.css';
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend);
 
 export default function PatternAnalysis() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [patterns, setPatterns] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState(30); // days

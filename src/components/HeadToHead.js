@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './head-to-head.css';
 
 export default function HeadToHead({ friendId }) {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [comparison, setComparison] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -135,8 +135,8 @@ export default function HeadToHead({ friendId }) {
       id: 'streak',
       icon: '🔥',
       label: 'Current Streak',
-      meValue: comparison.me.stats?.tracking_streak || 0,
-      friendValue: comparison.friend.stats?.tracking_streak || 0,
+      meValue: comparison.me.stats?.tracking_streak_current || 0,
+      friendValue: comparison.friend.stats?.tracking_streak_current || 0,
       unit: 'days',
       higherIsBetter: true
     },
@@ -161,10 +161,10 @@ export default function HeadToHead({ friendId }) {
     {
       id: 'achievements',
       icon: '🏆',
-      label: 'Achievements',
-      meValue: comparison.me.stats?.achievements_count || 0,
-      friendValue: comparison.friend.stats?.achievements_count || 0,
-      unit: 'unlocked',
+      label: 'Challenges Won',
+      meValue: comparison.me.stats?.challenges_won || 0,
+      friendValue: comparison.friend.stats?.challenges_won || 0,
+      unit: 'won',
       higherIsBetter: true
     },
     {
@@ -264,7 +264,7 @@ function UserCard({ user, label, wins }) {
       />
       <h3>{label}</h3>
       <div className="user-level">
-        Level {user.stats?.current_level || 1}
+        Level {user.stats?.level || 1}
       </div>
       <div className="user-wins">
         {wins > 0 && <span className="wins-badge">🏆 {wins} categories leading</span>}

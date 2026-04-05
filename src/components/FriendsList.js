@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './friends-list.css';
 
 export default function FriendsList() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all'); // all, active, challenges
@@ -32,29 +32,26 @@ export default function FriendsList() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get friends with their stats
+      // Get friends
       const { data: friendships, error } = await supabase
         .from('friendships')
-        .select(`
-          id,
-          friend_id,
-          responded_at,
-          profiles!friendships_friend_id_fkey (
-            id,
-            full_name,
-            avatar_url,
-            gamification_mode
-          )
-        `)
+        .select('id, friend_id, responded_at')
         .eq('user_id', user.id)
         .eq('status', 'accepted')
         .order('responded_at', { ascending: false });
 
       if (error) throw error;
 
+      // Fetch profiles for all friends in one query
+      const friendIds = (friendships || []).map(f => f.friend_id);
+      const { data: profilesList } = friendIds.length > 0
+        ? await supabase.from('profiles').select('id, full_name, avatar_url, gamification_mode').in('id', friendIds)
+        : { data: [] };
+      const profilesMap = Object.fromEntries((profilesList || []).map(p => [p.id, p]));
+
       // Enrich with stats
       const enrichedFriends = await Promise.all(
-        friendships.map(async (friendship) => {
+        (friendships || []).map(async (friendship) => {
           const friendId = friendship.friend_id;
 
           // Get latest weight
@@ -94,7 +91,7 @@ export default function FriendsList() {
 
           return {
             ...friendship,
-            profile: friendship.profiles,
+            profile: profilesMap[friendId] || null,
             latest_weight: latestWeight,
             goal,
             stats,
@@ -243,7 +240,7 @@ function FriendCard({ friend, onSelect, onRemove }) {
       <div className="friend-stats">
         <div className="stat-item">
           <div className="stat-icon">🔥</div>
-          <div className="stat-value">{stats?.tracking_streak || 0}</div>
+          <div className="stat-value">{stats?.tracking_streak_current || 0}</div>
           <div className="stat-label">Day Streak</div>
         </div>
         <div className="stat-item">
@@ -253,8 +250,8 @@ function FriendCard({ friend, onSelect, onRemove }) {
         </div>
         <div className="stat-item">
           <div className="stat-icon">🏆</div>
-          <div className="stat-value">{stats?.achievements_count || 0}</div>
-          <div className="stat-label">Achievements</div>
+          <div className="stat-value">{stats?.total_xp || 0}</div>
+          <div className="stat-label">Total XP</div>
         </div>
       </div>
 
@@ -321,7 +318,7 @@ function FriendDetailModal({ friend, onClose, onRemove }) {
 
         <div className="modal-stats">
           <div className="modal-stat">
-            <div className="modal-stat-value">{stats?.tracking_streak || 0}</div>
+            <div className="modal-stat-value">{stats?.tracking_streak_current || 0}</div>
             <div className="modal-stat-label">Day Streak</div>
           </div>
           <div className="modal-stat">
@@ -333,7 +330,7 @@ function FriendDetailModal({ friend, onClose, onRemove }) {
             <div className="modal-stat-label">Total XP</div>
           </div>
           <div className="modal-stat">
-            <div className="modal-stat-value">{stats?.achievements_count || 0}</div>
+            <div className="modal-stat-value">{stats?.total_xp || 0}</div>
             <div className="modal-stat-label">Achievements</div>
           </div>
         </div>

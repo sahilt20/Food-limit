@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './notifications-center.css';
 
 export default function NotificationsCenter() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all'); // all, unread, friends, achievements
   const [loading, setLoading] = useState(true);

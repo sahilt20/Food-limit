@@ -1,74 +1,93 @@
+/* Friend Search — FoodLimit Design System */
 .friend-search-container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 2rem;
+  animation: fadeInUp 0.5s ease-out forwards;
 }
 
 .friend-search-container h2 {
-  font-size: 1.75rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.6rem;
   font-weight: 700;
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-xl);
   text-align: center;
+  color: var(--text-primary);
 }
 
 .search-section {
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-bottom: var(--space-xl);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-md);
 }
 
 .search-box {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
 }
 
 .search-box input {
   flex: 1;
-  padding: 0.875rem 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
+  padding: 12px var(--space-md);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
   font-size: 1rem;
+  color: var(--text-primary);
+  transition: all var(--transition-base);
+  min-height: 44px;
+}
+
+.search-box input::placeholder {
+  color: var(--text-tertiary);
 }
 
 .search-box input:focus {
-  outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  border-color: var(--accent-green);
+  box-shadow: 0 0 0 3px var(--accent-green-dim);
+  background: var(--bg-secondary);
 }
 
 .search-box button {
-  padding: 0.875rem 2rem;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
+  padding: 12px var(--space-xl);
+  background: var(--gradient-primary);
+  color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-weight: 600;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-base);
+  min-height: 44px;
+  white-space: nowrap;
 }
 
 .search-box button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+  box-shadow: var(--shadow-glow-green);
 }
 
 .search-box button:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }
 
 .search-results {
-  margin-top: 1.5rem;
+  margin-top: var(--space-lg);
 }
 
 .search-results h3 {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  margin-bottom: 1rem;
-  color: #374151;
+  margin-bottom: var(--space-md);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .user-card,
@@ -77,46 +96,54 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  margin-bottom: 0.75rem;
-  transition: all 0.2s;
+  padding: var(--space-md);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-sm);
+  transition: all var(--transition-base);
 }
 
 .user-card:hover,
 .friend-card:hover {
-  background: #f3f4f6;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  background: var(--bg-glass-hover);
+  border-color: var(--border-glass-hover);
+  transform: translateY(-1px);
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-md);
 }
 
 .avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
   object-fit: cover;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border-glass-hover);
+  background: var(--gradient-cool);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .user-name {
   font-weight: 600;
-  color: #111827;
-  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  font-size: 0.95rem;
 }
 
 .request-date,
 .friend-since,
 .request-status {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .add-btn,
@@ -124,73 +151,78 @@
 .decline-btn,
 .compare-btn,
 .remove-btn {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+  padding: 8px var(--space-md);
+  border-radius: var(--radius-md);
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.82rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-base);
   border: none;
+  min-height: 36px;
 }
 
 .add-btn,
 .accept-btn {
-  background: #10b981;
-  color: white;
+  background: var(--gradient-primary);
+  color: #fff;
 }
 
 .add-btn:hover,
 .accept-btn:hover {
-  background: #059669;
   transform: translateY(-1px);
+  box-shadow: var(--shadow-glow-green);
 }
 
 .decline-btn,
 .remove-btn {
-  background: white;
-  color: #ef4444;
-  border: 1px solid #fecaca;
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+  border: 1px solid var(--accent-red);
 }
 
 .decline-btn:hover,
 .remove-btn:hover {
-  background: #fef2f2;
+  background: rgba(239, 68, 68, 0.25);
 }
 
 .compare-btn {
-  background: #3b82f6;
-  color: white;
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
   text-decoration: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
 }
 
 .compare-btn:hover {
-  background: #2563eb;
+  background: rgba(77, 141, 255, 0.25);
 }
 
 .request-actions,
 .friend-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-sm);
 }
 
 .requests-section,
 .sent-requests-section,
 .friends-list-section {
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-bottom: var(--space-xl);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-sm);
 }
 
 .requests-section h3,
 .sent-requests-section h3,
 .friends-list-section h3 {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
-  margin-bottom: 1rem;
-  color: #111827;
+  margin-bottom: var(--space-md);
+  color: var(--text-primary);
 }
 
 .request-card.pending {
@@ -199,29 +231,26 @@
 
 .empty-state {
   text-align: center;
-  padding: 3rem 2rem;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: var(--space-2xl) var(--space-xl);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px);
 }
 
 .empty-state p {
-  font-size: 1.125rem;
-  color: #6b7280;
-  margin: 0.5rem 0;
+  font-size: 1rem;
+  color: var(--text-tertiary);
+  margin: 4px 0;
 }
 
 .empty-state p:first-child {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 @media (max-width: 768px) {
-  .friend-search-container {
-    padding: 1rem;
-  }
-
   .search-box {
     flex-direction: column;
   }
@@ -230,7 +259,8 @@
   .request-card,
   .friend-card {
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--space-md);
+    align-items: flex-start;
   }
 
   .request-actions,
@@ -242,5 +272,6 @@
   .friend-actions button,
   .friend-actions a {
     flex: 1;
+    justify-content: center;
   }
 }

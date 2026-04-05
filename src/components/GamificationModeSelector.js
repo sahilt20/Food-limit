@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './gamification-mode.css';
 
 export default function GamificationModeSelector() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [mode, setMode] = useState('supportive'); // supportive or competitive
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -157,7 +157,7 @@ export default function GamificationModeSelector() {
 
 // Hook to check current mode
 export function useGamificationMode() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [mode, setMode] = useState('supportive');
 
   useEffect(() => {

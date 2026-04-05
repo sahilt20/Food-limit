@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import './ai-insights.css';
@@ -8,7 +8,7 @@ import './ai-insights.css';
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function AIWeeklyInsights() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
   const [weekRange, setWeekRange] = useState('current');

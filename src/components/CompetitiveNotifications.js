@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './competitive-notifications.css';
 
 export default function CompetitiveNotifications() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all'); // all, challenges, rankings, overtakes
 
@@ -72,7 +72,7 @@ export default function CompetitiveNotifications() {
             setNotifications(prev => [payload.new, ...prev]);
             
             // Show browser notification if permission granted
-            if (Notification.permission === 'granted') {
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
               new Notification(payload.new.title, {
                 body: payload.new.message,
                 icon: '/icon.png'
@@ -133,7 +133,7 @@ export default function CompetitiveNotifications() {
     <div className="competitive-notifications">
       <div className="notifications-header">
         <h2>🏆 Competitive Updates</h2>
-        {Notification.permission !== 'granted' && (
+        {typeof Notification !== 'undefined' && Notification.permission !== 'granted' && (
           <button className="enable-notifications-btn" onClick={requestNotificationPermission}>
             🔔 Enable Push Notifications
           </button>

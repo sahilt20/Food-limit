@@ -1,123 +1,132 @@
+/* Daily Challenges — FoodLimit Design System */
 .challenges-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
-  background: #f9fafb;
-  min-height: 100vh;
+  animation: fadeInUp 0.5s ease-out forwards;
 }
 
 .challenges-header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: var(--space-2xl);
 }
 
 .challenges-header h2 {
-  font-size: 2.5rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 2rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 6px;
+  color: var(--text-primary);
 }
 
 .challenges-subtitle {
-  color: #6b7280;
-  font-size: 1.125rem;
+  color: var(--text-tertiary);
+  font-size: 1rem;
 }
 
 .challenges-section {
-  margin-bottom: 3rem;
+  margin-bottom: var(--space-2xl);
 }
 
 .challenges-section h3 {
-  font-size: 1.75rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.3rem;
   font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: #111827;
+  margin-bottom: var(--space-lg);
+  color: var(--text-primary);
 }
 
 .challenges-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-lg);
 }
 
 .challenge-card {
-  background: white;
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s;
-  border: 2px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
 }
 
 .challenge-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-glass-hover);
 }
 
 .challenge-card.complete {
-  border-color: #10b981;
-  background: linear-gradient(135deg, #ffffff, #f0fdf4);
+  border-color: var(--accent-green);
+  background: var(--accent-green-dim);
+  box-shadow: var(--shadow-glow-green);
 }
 
 .challenge-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-md);
 }
 
 .challenge-card-header h4 {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
   flex: 1;
 }
 
 .complete-badge {
-  padding: 0.25rem 0.75rem;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  padding: 4px 12px;
+  background: var(--gradient-primary);
+  color: #fff;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .challenge-description {
-  color: #6b7280;
-  margin-bottom: 1.5rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-lg);
   line-height: 1.5;
+  font-size: 0.9rem;
 }
 
 .challenge-progress {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-lg);
 }
 
 .progress-bar-challenge {
   width: 100%;
-  height: 10px;
-  background: #e5e7eb;
-  border-radius: 5px;
+  height: 8px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-full);
   overflow: hidden;
-  margin-bottom: 0.5rem;
+  margin-bottom: 6px;
 }
 
 .progress-fill-challenge {
   height: 100%;
-  background: linear-gradient(90deg, #10b981, #059669);
-  border-radius: 5px;
-  transition: width 0.5s ease;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-full);
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .progress-text-challenge {
   text-align: center;
   font-weight: 600;
-  color: #10b981;
-  font-size: 0.875rem;
+  color: var(--accent-green);
+  font-size: 0.82rem;
 }
 
 .challenge-rewards {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
 }
 
 .reward-item {
@@ -125,161 +134,143 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background: #f9fafb;
-  border-radius: 10px;
+  gap: 6px;
+  padding: 10px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
 }
 
 .reward-icon {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
 }
 
 .reward-value {
   font-weight: 600;
-  color: #111827;
-  font-size: 0.875rem;
+  color: var(--text-primary);
+  font-size: 0.85rem;
 }
 
 .complete-btn {
   width: 100%;
-  padding: 1rem;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
+  padding: var(--space-md);
+  background: var(--gradient-primary);
+  color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-base);
+  min-height: 44px;
 }
 
 .complete-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+  box-shadow: var(--shadow-glow-green);
 }
 
 .empty-state {
   text-align: center;
-  padding: 3rem;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: var(--space-2xl);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px);
 }
 
 .empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
+  font-size: 3.5rem;
+  margin-bottom: var(--space-md);
 }
 
 .empty-state p {
-  color: #6b7280;
-  font-size: 1.125rem;
+  color: var(--text-tertiary);
+  font-size: 1rem;
 }
 
 .weekly-empty {
   text-align: center;
-  padding: 2rem;
-  background: white;
-  border-radius: 12px;
-  color: #6b7280;
+  padding: var(--space-xl);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
 }
 
 .loading {
   text-align: center;
-  padding: 3rem;
-  font-size: 1.125rem;
-  color: #6b7280;
+  padding: var(--space-2xl);
+  font-size: 1rem;
+  color: var(--text-tertiary);
 }
 
-/* Celebration */
+/* Celebration Overlay */
 .challenge-celebration {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
   animation: fadeIn 0.3s ease;
+  backdrop-filter: blur(6px);
 }
 
 .celebration-content {
-  background: white;
-  border-radius: 20px;
-  padding: 3rem 2rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--accent-green);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl) var(--space-xl);
   text-align: center;
   max-width: 400px;
+  width: 90%;
   animation: scaleIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  box-shadow: var(--shadow-glow-green), var(--shadow-lg);
 }
 
 .celebration-icon {
-  font-size: 5rem;
-  margin-bottom: 1rem;
+  font-size: 4.5rem;
+  margin-bottom: var(--space-md);
   animation: bounce 0.6s infinite alternate;
 }
 
 .celebration-content h3 {
-  font-size: 2rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.8rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
-  color: #111827;
+  margin-bottom: 6px;
+  color: var(--text-primary);
 }
 
 .celebration-content p {
-  font-size: 1.25rem;
-  color: #6b7280;
-  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
 }
 
 .celebration-rewards {
-  padding: 1rem;
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  border-radius: 12px;
+  padding: var(--space-md);
+  background: var(--accent-yellow-dim);
+  border: 1px solid var(--accent-yellow);
+  border-radius: var(--radius-md);
   font-weight: 600;
-  font-size: 1.125rem;
-  color: #92400e;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scaleIn {
-  from {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  font-size: 1rem;
+  color: var(--accent-yellow);
 }
 
 @keyframes bounce {
   from { transform: translateY(0); }
-  to { transform: translateY(-10px); }
+  to   { transform: translateY(-10px); }
 }
 
 @media (max-width: 768px) {
-  .challenges-container {
-    padding: 1rem;
-  }
-
   .challenges-grid {
     grid-template-columns: 1fr;
   }
 
   .challenges-header h2 {
-    font-size: 2rem;
-  }
-
-  .celebration-content {
-    margin: 1rem;
-    padding: 2rem 1.5rem;
+    font-size: 1.6rem;
   }
 }

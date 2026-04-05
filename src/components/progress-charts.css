@@ -1,68 +1,81 @@
+/* Progress Charts — FoodLimit Design System */
 .progress-charts-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem;
-  background: #f9fafb;
-  min-height: 100vh;
+  animation: fadeInUp 0.5s ease-out forwards;
 }
 
 .charts-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-xl);
 }
 
 .charts-header h2 {
-  font-size: 2.5rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 2rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 6px;
+  color: var(--text-primary);
 }
 
 .charts-subtitle {
-  color: #6b7280;
-  font-size: 1.125rem;
+  color: var(--text-tertiary);
+  font-size: 1rem;
 }
 
 .time-range-selector {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-sm);
   justify-content: center;
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-xl);
   flex-wrap: wrap;
 }
 
 .range-btn {
-  padding: 0.75rem 1.5rem;
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
+  padding: 10px var(--space-lg);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-full);
   font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-base);
+  min-height: 40px;
 }
 
 .range-btn:hover {
-  border-color: #10b981;
-  background: #f0fdf4;
+  border-color: var(--accent-green);
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
 }
 
 .range-btn.active {
-  border-color: #10b981;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
+  border-color: var(--accent-green);
+  background: var(--gradient-primary);
+  color: #fff;
 }
 
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
 }
 
 .chart-card {
-  background: white;
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.chart-card:hover {
+  border-color: var(--border-glass-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .chart-card.large {
@@ -70,74 +83,78 @@
 }
 
 .chart-card h3 {
-  font-size: 1.25rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.1rem;
   font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: #111827;
+  margin-bottom: var(--space-lg);
+  color: var(--text-primary);
 }
 
 .empty-chart {
-  padding: 3rem;
+  padding: var(--space-2xl);
   text-align: center;
-  color: #6b7280;
-  font-size: 1rem;
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
 }
 
 .pie-chart-wrapper {
-  max-width: 300px;
+  max-width: 280px;
   margin: 0 auto;
 }
 
 .stats-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-lg);
 }
 
 .stat-card-chart {
-  background: white;
-  border-radius: 16px;
-  padding: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s;
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
 }
 
 .stat-card-chart:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent-green);
 }
 
 .stat-icon-chart {
-  font-size: 2.5rem;
-  margin-bottom: 0.75rem;
+  font-size: 2.2rem;
+  margin-bottom: var(--space-sm);
 }
 
 .stat-value-chart {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 700;
-  color: #10b981;
-  margin-bottom: 0.5rem;
+  color: var(--accent-green);
+  margin-bottom: 6px;
 }
 
 .stat-unit {
-  font-size: 1rem;
-  color: #6b7280;
+  font-size: 0.9rem;
+  color: var(--text-tertiary);
   font-weight: 400;
-  margin-left: 0.25rem;
+  margin-left: 3px;
 }
 
 .stat-label-chart {
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
   font-weight: 500;
 }
 
 .loading {
   text-align: center;
-  padding: 3rem;
-  font-size: 1.125rem;
-  color: #6b7280;
+  padding: var(--space-2xl);
+  font-size: 1rem;
+  color: var(--text-tertiary);
 }
 
 @media (max-width: 1024px) {
@@ -151,21 +168,17 @@
 }
 
 @media (max-width: 768px) {
-  .progress-charts-container {
-    padding: 1rem;
-  }
-
   .charts-header h2 {
-    font-size: 2rem;
+    font-size: 1.6rem;
   }
 
   .time-range-selector {
-    gap: 0.5rem;
+    gap: var(--space-xs);
   }
 
   .range-btn {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
+    padding: 8px var(--space-md);
+    font-size: 0.82rem;
   }
 
   .stats-summary {
@@ -173,10 +186,10 @@
   }
 
   .stat-icon-chart {
-    font-size: 2rem;
+    font-size: 1.8rem;
   }
 
   .stat-value-chart {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
   }
 }

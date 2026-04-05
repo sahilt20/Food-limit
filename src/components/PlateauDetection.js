@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './plateau-detection.css';
 
 export default function PlateauDetection() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [plateau, setPlateau] = useState(null);
   const [interventions, setInterventions] = useState([]);
   const [loading, setLoading] = useState(true);

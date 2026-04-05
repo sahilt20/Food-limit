@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import './leaderboards.css';
 
 export default function Leaderboards() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [category, setCategory] = useState('weight_loss'); // weight_loss, streaks, xp, challenges
   const [scope, setScope] = useState('friends'); // friends, global
   const [leaderboard, setLeaderboard] = useState([]);
@@ -105,7 +105,7 @@ export default function Leaderboards() {
           scoreLabel = `${score.toFixed(1)}kg lost`;
           break;
         case 'streaks':
-          score = stats?.tracking_streak || 0;
+          score = stats?.tracking_streak_current || 0;
           scoreLabel = `${score} day streak`;
           break;
         case 'xp':
@@ -244,8 +244,8 @@ function LeaderboardEntry({ entry, rank, isCurrentUser }) {
           {isCurrentUser && <span className="you-badge">You</span>}
         </div>
         <div className="entry-stats">
-          Level {entry.stats?.current_level || 1} • 
-          {entry.stats?.achievements_count || 0} achievements
+          Level {entry.stats?.level || 1} •
+          {entry.stats?.total_xp || 0} XP
         </div>
       </div>
 
