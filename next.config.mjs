@@ -90,6 +90,13 @@ const nextConfig = {
           },
         ],
       },
+      // HTML pages: always revalidate with server (no stale UI after deploys)
+      {
+        source: '/((?!_next/static|_next/image|favicon\\.ico|icon-)[^.]*)',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, must-revalidate' },
+        ],
+      },
       // Cache static assets aggressively
       {
         source: '/icon-:size.png',
