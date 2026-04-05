@@ -1,0 +1,246 @@
+.friend-search-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.friend-search-container h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.search-section {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.search-box {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.search-box input {
+  flex: 1;
+  padding: 0.875rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 1rem;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.search-box button {
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.search-box button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+}
+
+.search-box button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.search-results {
+  margin-top: 1.5rem;
+}
+
+.search-results h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #374151;
+}
+
+.user-card,
+.request-card,
+.friend-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+  transition: all 0.2s;
+}
+
+.user-card:hover,
+.friend-card:hover {
+  background: #f3f4f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e5e7eb;
+}
+
+.user-name {
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.request-date,
+.friend-since,
+.request-status {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.add-btn,
+.accept-btn,
+.decline-btn,
+.compare-btn,
+.remove-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.add-btn,
+.accept-btn {
+  background: #10b981;
+  color: white;
+}
+
+.add-btn:hover,
+.accept-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.decline-btn,
+.remove-btn {
+  background: white;
+  color: #ef4444;
+  border: 1px solid #fecaca;
+}
+
+.decline-btn:hover,
+.remove-btn:hover {
+  background: #fef2f2;
+}
+
+.compare-btn {
+  background: #3b82f6;
+  color: white;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.compare-btn:hover {
+  background: #2563eb;
+}
+
+.request-actions,
+.friend-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.requests-section,
+.sent-requests-section,
+.friends-list-section {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.requests-section h3,
+.sent-requests-section h3,
+.friends-list-section h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #111827;
+}
+
+.request-card.pending {
+  opacity: 0.7;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.empty-state p {
+  font-size: 1.125rem;
+  color: #6b7280;
+  margin: 0.5rem 0;
+}
+
+.empty-state p:first-child {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+@media (max-width: 768px) {
+  .friend-search-container {
+    padding: 1rem;
+  }
+
+  .search-box {
+    flex-direction: column;
+  }
+
+  .user-card,
+  .request-card,
+  .friend-card {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .request-actions,
+  .friend-actions {
+    width: 100%;
+  }
+
+  .request-actions button,
+  .friend-actions button,
+  .friend-actions a {
+    flex: 1;
+  }
+}

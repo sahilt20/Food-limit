@@ -1,0 +1,377 @@
+.weight-tracker {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+/* Check-in Card */
+.check-in-card {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.check-in-card h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #111827;
+}
+
+.weight-input-group {
+  margin-bottom: 1.5rem;
+}
+
+.weight-input-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #374151;
+}
+
+.input-with-unit {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.input-with-unit input {
+  flex: 1;
+  padding: 1rem;
+  font-size: 2rem;
+  font-weight: 700;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  text-align: center;
+  color: #10b981;
+}
+
+.input-with-unit input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.input-with-unit .unit {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.optional-inputs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.input-group label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Mood Selector */
+.mood-selector {
+  margin-bottom: 1.5rem;
+}
+
+.mood-selector label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #374151;
+}
+
+.mood-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.5rem;
+}
+
+.mood-btn {
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+}
+
+.mood-btn:hover {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.mood-btn.selected {
+  border-color: #10b981;
+  background: #f0fdf4;
+  font-weight: 600;
+}
+
+/* Notes */
+.notes-input label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.notes-input textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.notes-input textarea:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.log-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 1rem;
+}
+
+.log-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+}
+
+.log-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Progress Card */
+.progress-card {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.progress-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #111827;
+}
+
+.progress-bar-container {
+  margin-bottom: 1.5rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.75rem;
+  transition: width 0.5s ease;
+  min-width: 60px;
+}
+
+.progress-text {
+  color: white;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.progress-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.encouragement {
+  text-align: center;
+  font-weight: 500;
+  color: #059669;
+  margin: 0;
+}
+
+/* Chart Card */
+.chart-card {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.chart-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #111827;
+}
+
+.chart-container {
+  height: 300px;
+  margin-bottom: 1rem;
+}
+
+.chart-stats {
+  display: flex;
+  justify-content: space-around;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.chart-stats p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Recent Logs */
+.recent-logs {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.recent-logs h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #111827;
+}
+
+.logs-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.log-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.log-date {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.log-weight {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.log-mood {
+  font-size: 1.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .weight-tracker {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .check-in-card,
+  .progress-card,
+  .chart-card,
+  .recent-logs {
+    padding: 1.5rem;
+  }
+
+  .input-with-unit input {
+    font-size: 1.5rem;
+  }
+
+  .mood-buttons {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .progress-stats {
+    gap: 0.5rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  .log-item {
+    grid-template-columns: 1fr auto;
+  }
+
+  .log-mood {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}

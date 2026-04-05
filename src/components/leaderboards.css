@@ -1,0 +1,253 @@
+.leaderboards-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: #f9fafb;
+  min-height: 100vh;
+}
+
+.leaderboards-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.leaderboards-header h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.leaderboards-subtitle {
+  color: #6b7280;
+  font-size: 1.125rem;
+}
+
+.category-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.category-btn {
+  padding: 1rem;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.category-btn:hover {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.category-btn.active {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.category-btn.active .category-icon,
+.category-btn.active .category-label {
+  filter: brightness(0) invert(1);
+}
+
+.category-icon {
+  font-size: 2rem;
+}
+
+.category-label {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.scope-toggle {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.scope-btn {
+  padding: 0.75rem 2rem;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.scope-btn:hover {
+  border-color: #10b981;
+}
+
+.scope-btn.active {
+  border-color: #10b981;
+  background: #10b981;
+  color: white;
+}
+
+.user-rank-badge {
+  text-align: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-radius: 12px;
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 2rem;
+}
+
+.leaderboard-list {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.leaderboard-entry {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.leaderboard-entry:last-child {
+  border-bottom: none;
+}
+
+.leaderboard-entry:hover {
+  background: #f9fafb;
+}
+
+.leaderboard-entry.current-user {
+  background: linear-gradient(135deg, #f0fdf4, #d1fae5);
+  border-left: 4px solid #10b981;
+}
+
+.entry-rank {
+  font-size: 1.5rem;
+  font-weight: 700;
+  min-width: 60px;
+  text-align: center;
+}
+
+.entry-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #e5e7eb;
+}
+
+.entry-info {
+  flex: 1;
+}
+
+.entry-name {
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.you-badge {
+  padding: 0.25rem 0.75rem;
+  background: #10b981;
+  color: white;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.entry-stats {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.entry-score {
+  text-align: right;
+}
+
+.score-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.empty-leaderboard {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.empty-icon {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+}
+
+.empty-leaderboard h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.empty-leaderboard p {
+  color: #6b7280;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.125rem;
+  color: #6b7280;
+}
+
+@media (max-width: 768px) {
+  .leaderboards-container {
+    padding: 1rem;
+  }
+
+  .category-selector {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .scope-toggle {
+    flex-direction: column;
+  }
+
+  .scope-btn {
+    width: 100%;
+  }
+
+  .leaderboard-entry {
+    padding: 1rem;
+  }
+
+  .entry-rank {
+    font-size: 1.25rem;
+    min-width: 40px;
+  }
+
+  .entry-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .entry-name {
+    font-size: 1rem;
+  }
+
+  .score-value {
+    font-size: 1rem;
+  }
+}

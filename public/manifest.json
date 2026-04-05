@@ -1,23 +1,50 @@
 {
-  "name": "FoodLimit",
+  "name": "Food Limit - Weight Loss Tracker",
   "short_name": "FoodLimit",
-  "description": "Smart Grocery Nutrition Tracker",
+  "description": "Track your weight loss journey with gamification, social challenges, and AI insights",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0f",
-  "theme_color": "#0a0a0f",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "categories": ["health", "fitness", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Log Weight",
+      "short_name": "Weight",
+      "description": "Quick weight logging",
+      "url": "/dashboard/weight",
+      "icons": [{ "src": "/icon-192.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Log Meal",
+      "short_name": "Meal",
+      "description": "Quick meal logging",
+      "url": "/dashboard/add",
+      "icons": [{ "src": "/icon-192.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Challenges",
+      "short_name": "Challenges",
+      "description": "View active challenges",
+      "url": "/dashboard/challenges",
+      "icons": [{ "src": "/icon-192.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
 }

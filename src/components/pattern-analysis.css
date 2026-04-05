@@ -1,0 +1,273 @@
+.pattern-analysis {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: #f9fafb;
+  min-height: 100vh;
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.analysis-header h2 {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.time-range-selector {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.time-range-selector button {
+  padding: 0.5rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.time-range-selector button:hover {
+  border-color: #10b981;
+}
+
+.time-range-selector button.active {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.analysis-section {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.analysis-section h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.success-factors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.success-factor-card {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: center;
+  border: 2px solid #10b981;
+}
+
+.factor-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.factor-title {
+  font-weight: 700;
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+}
+
+.factor-value {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #10b981;
+  margin-bottom: 0.5rem;
+}
+
+.factor-description {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.days-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+}
+
+.best-days h4,
+.worst-days h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.day-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.day-name {
+  font-weight: 600;
+}
+
+.day-success {
+  color: #10b981;
+  font-weight: 700;
+}
+
+.correlations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.correlation-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 12px;
+  border-left: 4px solid #e5e7eb;
+}
+
+.correlation-card.strong {
+  border-left-color: #10b981;
+  background: linear-gradient(135deg, #f0fdf4, #ffffff);
+}
+
+.correlation-card.moderate {
+  border-left-color: #f59e0b;
+  background: linear-gradient(135deg, #fefce8, #ffffff);
+}
+
+.correlation-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.correlation-content {
+  flex: 1;
+}
+
+.correlation-factor {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.correlation-description {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.correlation-impact {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.correlation-impact.strong {
+  background: #10b981;
+  color: white;
+}
+
+.correlation-impact.moderate {
+  background: #f59e0b;
+  color: white;
+}
+
+.weekday-weekend-comparison {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.comparison-stat {
+  text-align: center;
+}
+
+.stat-label {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #10b981;
+}
+
+.comparison-arrow {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+.chart-container {
+  height: 300px;
+  margin-top: 1rem;
+}
+
+.pattern-analysis-loading,
+.pattern-analysis-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: white;
+  border-radius: 16px;
+  margin: 2rem;
+}
+
+.loader {
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #10b981;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .pattern-analysis {
+    padding: 1rem;
+  }
+
+  .analysis-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .weekday-weekend-comparison {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .comparison-arrow {
+    transform: rotate(90deg);
+  }
+}
