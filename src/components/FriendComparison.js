@@ -14,9 +14,12 @@ ChartJS.register(
   BarElement, Title, Tooltip, Legend, Filler
 );
 
+// Inline registration happens after racePlugin is defined in component scope —
+// we register it per-chart via the plugins option instead of globally.
+
 const CHART_COLORS = {
-  me:     { line: '#10b981', fill: 'rgba(16,185,129,0.12)' },
-  friend: { line: '#6366f1', fill: 'rgba(99,102,241,0.12)' },
+  me:     { line: '#10b981', fill: 'rgba(16,185,129,0.08)', glow: 'rgba(16,185,129,0.6)' },
+  friend: { line: '#f59e0b', fill: 'rgba(245,158,11,0.08)', glow: 'rgba(245,158,11,0.6)' },
 };
 
 export default function FriendComparison() {
@@ -114,26 +117,47 @@ export default function FriendComparison() {
     const myMap = Object.fromEntries((myData?.weight || []).map(w => [w.logged_at.split('T')[0], w.weight_kg]));
     const friendMap = Object.fromEntries((friendData?.weight || []).map(w => [w.logged_at.split('T')[0], w.weight_kg]));
 
+    const myVals = allDates.map(d => myMap[d] ?? null);
+    const friendVals = allDates.map(d => friendMap[d] ?? null);
+    const allVals = [...myVals, ...friendVals].filter(v => v != null);
+
     return {
       labels: allDates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
       datasets: [
         {
           label: 'You',
-          data: allDates.map(d => myMap[d] ?? null),
+          data: myVals,
           borderColor: CHART_COLORS.me.line,
           backgroundColor: CHART_COLORS.me.fill,
-          tension: 0.4, fill: true, spanGaps: true,
-          pointRadius: 3, borderWidth: 2,
+          tension: 0.35, fill: true, spanGaps: true,
+          pointRadius: 5, pointHoverRadius: 9, borderWidth: 3,
+          pointBackgroundColor: CHART_COLORS.me.line,
+          pointBorderColor: '#0f0f19',
+          pointBorderWidth: 2,
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: CHART_COLORS.me.line,
+          pointHoverBorderWidth: 3,
+          borderCapStyle: 'round',
+          borderJoinStyle: 'round',
         },
         {
           label: selectedFriend?.full_name || 'Friend',
-          data: allDates.map(d => friendMap[d] ?? null),
+          data: friendVals,
           borderColor: CHART_COLORS.friend.line,
           backgroundColor: CHART_COLORS.friend.fill,
-          tension: 0.4, fill: true, spanGaps: true,
-          pointRadius: 3, borderWidth: 2,
+          tension: 0.35, fill: true, spanGaps: true,
+          pointRadius: 5, pointHoverRadius: 9, borderWidth: 3,
+          pointBackgroundColor: CHART_COLORS.friend.line,
+          pointBorderColor: '#0f0f19',
+          pointBorderWidth: 2,
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: CHART_COLORS.friend.line,
+          pointHoverBorderWidth: 3,
+          borderCapStyle: 'round',
+          borderJoinStyle: 'round',
         },
       ],
+      _allVals: allVals,
     };
   };
 
@@ -146,26 +170,43 @@ export default function FriendComparison() {
     const myMap = Object.fromEntries((myData?.nutrition || []).map(n => [n.summary_date, n.total_calories]));
     const friendMap = Object.fromEntries((friendData?.nutrition || []).map(n => [n.summary_date, n.total_calories]));
 
+    const myVals = allDates.map(d => myMap[d] ?? null);
+    const friendVals = allDates.map(d => friendMap[d] ?? null);
+    const allVals = [...myVals, ...friendVals].filter(v => v != null);
+
     return {
       labels: allDates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
       datasets: [
         {
           label: 'You',
-          data: allDates.map(d => myMap[d] ?? null),
+          data: myVals,
           borderColor: CHART_COLORS.me.line,
           backgroundColor: CHART_COLORS.me.fill,
           tension: 0.3, fill: true, spanGaps: true,
-          pointRadius: 2, borderWidth: 2,
+          pointRadius: 4, pointHoverRadius: 9, borderWidth: 3,
+          pointBackgroundColor: CHART_COLORS.me.line,
+          pointBorderColor: '#0f0f19',
+          pointBorderWidth: 2,
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: CHART_COLORS.me.line,
+          pointHoverBorderWidth: 3,
         },
         {
           label: selectedFriend?.full_name || 'Friend',
-          data: allDates.map(d => friendMap[d] ?? null),
+          data: friendVals,
           borderColor: CHART_COLORS.friend.line,
           backgroundColor: CHART_COLORS.friend.fill,
           tension: 0.3, fill: true, spanGaps: true,
-          pointRadius: 2, borderWidth: 2,
+          pointRadius: 4, pointHoverRadius: 9, borderWidth: 3,
+          pointBackgroundColor: CHART_COLORS.friend.line,
+          pointBorderColor: '#0f0f19',
+          pointBorderWidth: 2,
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: CHART_COLORS.friend.line,
+          pointHoverBorderWidth: 3,
         },
       ],
+      _allVals: allVals,
     };
   };
 
@@ -185,7 +226,9 @@ export default function FriendComparison() {
             avg(myData?.nutrition || [], 'total_fat_g'),
           ],
           backgroundColor: CHART_COLORS.me.line,
-          borderRadius: 6,
+          borderRadius: 8,
+          borderSkipped: false,
+          hoverBackgroundColor: '#34d399',
         },
         {
           label: selectedFriend?.full_name || 'Friend',
@@ -195,24 +238,138 @@ export default function FriendComparison() {
             avg(friendData?.nutrition || [], 'total_fat_g'),
           ],
           backgroundColor: CHART_COLORS.friend.line,
-          borderRadius: 6,
+          borderRadius: 8,
+          borderSkipped: false,
+          hoverBackgroundColor: '#fcd34d',
         },
       ],
     };
   };
 
-  const chartOpts = (yLabel) => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { labels: { color: 'var(--text-primary)', font: { size: 12 } } },
-      tooltip: { mode: 'index', intersect: false },
+  // Race-style custom plugin: draws "LEADING" badge on the winning line's last point
+  const racePlugin = {
+    id: 'racePlugin',
+    afterDraw(chart) {
+      const { ctx, data, chartArea } = chart;
+      if (!chartArea) return;
+      const datasets = data.datasets;
+      if (datasets.length < 2) return;
+
+      // Find last non-null values for each dataset
+      const lastVal = (ds) => {
+        for (let i = ds.data.length - 1; i >= 0; i--) {
+          if (ds.data[i] != null) return { val: ds.data[i], idx: i };
+        }
+        return null;
+      };
+
+      const a = lastVal(datasets[0]);
+      const b = lastVal(datasets[1]);
+      if (!a || !b) return;
+
+      // Determine who's "leading" based on chart type
+      // For weight loss, lower is winning; for calories/macros, higher may vary —
+      // we'll show a flag for whichever has the more recent data point closest to goal
+      // Simple approach: just show gap between last values
+      const gap = Math.abs(a.val - b.val).toFixed(1);
+      if (gap === '0.0') return;
+
+      const unit = chart.options.scales.y?.title?.text?.includes('kg') ? 'kg'
+        : chart.options.scales.y?.title?.text?.includes('kcal') ? 'kcal' : 'g';
+
+      // Draw gap badge at center top of chart
+      const cx = (chartArea.left + chartArea.right) / 2;
+      const cy = chartArea.top + 16;
+
+      ctx.save();
+      const label = `GAP: ${gap} ${unit}`;
+      ctx.font = 'bold 11px monospace';
+      const tw = ctx.measureText(label).width;
+      const bw = tw + 20, bh = 22;
+
+      ctx.fillStyle = 'rgba(15,15,25,0.85)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(cx - bw / 2, cy - 11, bw, bh, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, cx, cy);
+      ctx.restore();
     },
-    scales: {
-      x: { ticks: { color: 'var(--text-tertiary)', maxTicksLimit: 8 }, grid: { color: 'var(--border-glass)' } },
-      y: { ticks: { color: 'var(--text-tertiary)' }, grid: { color: 'var(--border-glass)' }, title: { display: true, text: yLabel, color: 'var(--text-secondary)' } },
-    },
-  });
+  };
+
+  const chartOpts = (yLabel, allValues = []) => {
+    const nums = allValues.filter(v => v != null && !isNaN(v));
+    const min = nums.length ? Math.min(...nums) : 0;
+    const max = nums.length ? Math.max(...nums) : 100;
+    const range = max - min || 10;
+    const pad = range * 0.28;
+
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 800, easing: 'easeInOutQuart' },
+      plugins: {
+        racePlugin,
+        legend: {
+          labels: {
+            color: '#e2e8f0',
+            font: { size: 12, weight: '700', family: 'monospace' },
+            padding: 20,
+            usePointStyle: true,
+            pointStyle: 'rectRounded',
+          },
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          backgroundColor: 'rgba(8,8,16,0.96)',
+          titleColor: '#e2e8f0',
+          bodyColor: '#94a3b8',
+          borderColor: 'rgba(255,255,255,0.12)',
+          borderWidth: 1,
+          padding: 14,
+          titleFont: { family: 'monospace', size: 11, weight: '700' },
+          bodyFont: { family: 'monospace', size: 11 },
+          callbacks: {
+            title: items => `📅 ${items[0]?.label}`,
+            label: ctx => {
+              const val = ctx.parsed.y != null ? ctx.parsed.y : '—';
+              const prefix = ctx.datasetIndex === 0 ? '🟢' : '🟡';
+              return ` ${prefix} ${ctx.dataset.label}: ${val} ${yLabel.split(' ')[0]}`;
+            },
+            afterBody: items => {
+              const vals = items.filter(i => i.parsed.y != null).map(i => i.parsed.y);
+              if (vals.length < 2) return [];
+              const diff = (vals[0] - vals[1]).toFixed(1);
+              const sign = diff > 0 ? '+' : '';
+              return [``, ` ⚡ Difference: ${sign}${diff}`];
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#64748b', maxTicksLimit: 10, font: { size: 10, family: 'monospace' } },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          border: { color: 'rgba(255,255,255,0.08)' },
+        },
+        y: {
+          min: nums.length ? Math.floor(min - pad) : undefined,
+          max: nums.length ? Math.ceil(max + pad) : undefined,
+          ticks: { color: '#64748b', font: { size: 10, family: 'monospace' } },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          border: { color: 'rgba(255,255,255,0.08)' },
+          title: { display: true, text: yLabel, color: '#64748b', font: { size: 10, family: 'monospace' } },
+        },
+      },
+    };
+  };
 
   if (friends.length === 0) {
     return (
@@ -274,24 +431,27 @@ export default function FriendComparison() {
               { label: 'Total XP', myVal: myData.stats?.total_xp || 0, friendVal: friendData.stats?.total_xp || 0, unit: 'XP', icon: '⭐' },
               { label: 'Level', myVal: myData.stats?.level || 1, friendVal: friendData.stats?.level || 1, unit: '', icon: '🏅' },
               { label: 'Weigh-ins', myVal: myData.weight.length, friendVal: friendData.weight.length, unit: '', icon: '⚖️' },
-            ].map(s => (
-              <div key={s.label} className="comparison-stat-card">
-                <div className="stat-icon-label">{s.icon} {s.label}</div>
-                <div className="stat-row">
-                  <div className={`stat-col me ${s.myVal >= s.friendVal ? 'winning' : ''}`}>
-                    <span className="stat-name">You</span>
-                    <span className="stat-num">{s.myVal}{s.unit && ` ${s.unit}`}</span>
-                    {s.myVal > s.friendVal && <span className="crown">👑</span>}
-                  </div>
-                  <div className="stat-vs">VS</div>
-                  <div className={`stat-col friend ${s.friendVal > s.myVal ? 'winning' : ''}`}>
-                    <span className="stat-name">{selectedFriend.full_name?.split(' ')[0] || 'Friend'}</span>
-                    <span className="stat-num">{s.friendVal}{s.unit && ` ${s.unit}`}</span>
-                    {s.friendVal > s.myVal && <span className="crown">👑</span>}
+            ].map(s => {
+              const tied = s.myVal === s.friendVal;
+              return (
+                <div key={s.label} className="comparison-stat-card">
+                  <div className="stat-icon-label">{s.icon} {s.label}</div>
+                  <div className="stat-row">
+                    <div className={`stat-col me ${s.myVal >= s.friendVal ? 'winning' : ''}`}>
+                      {s.myVal > s.friendVal && <span className="crown">👑</span>}
+                      <span className="stat-name">You</span>
+                      <span className="stat-num">{s.myVal}{s.unit && ` ${s.unit}`}</span>
+                    </div>
+                    <div className="stat-vs">{tied ? '=' : 'VS'}</div>
+                    <div className={`stat-col friend ${s.friendVal > s.myVal ? 'winning' : ''}`}>
+                      {s.friendVal > s.myVal && <span className="crown">👑</span>}
+                      <span className="stat-name">{selectedFriend.full_name?.split(' ')[0] || 'Friend'}</span>
+                      <span className="stat-num">{s.friendVal}{s.unit && ` ${s.unit}`}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Chart tabs */}
@@ -312,15 +472,9 @@ export default function FriendComparison() {
           </div>
 
           <div className="chart-area">
-            {activeChart === 'weight' && (
-              <Line data={buildWeightChart()} options={chartOpts('Weight (kg)')} />
-            )}
-            {activeChart === 'calories' && (
-              <Line data={buildCaloriesChart()} options={chartOpts('Calories (kcal)')} />
-            )}
-            {activeChart === 'macros' && (
-              <Bar data={buildMacrosChart()} options={chartOpts('Grams (g)')} />
-            )}
+            {activeChart === 'weight' && (() => { const d = buildWeightChart(); return <Line data={d} options={chartOpts('Weight (kg)', d._allVals)} />; })()}
+            {activeChart === 'calories' && (() => { const d = buildCaloriesChart(); return <Line data={d} options={chartOpts('Calories (kcal)', d._allVals)} />; })()}
+            {activeChart === 'macros' && <Bar data={buildMacrosChart()} options={chartOpts('Grams (g)')} />}
           </div>
 
           {(myData.weight.length === 0 && friendData.weight.length === 0) && (
