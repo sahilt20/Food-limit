@@ -16,7 +16,7 @@ export const PROVIDERS = {
 };
 
 const TEXT_TIMEOUT_MS = 15000;
-const OPENROUTER_TIMEOUT_MS = 35000; // Larger models need more generation time
+const OPENROUTER_TIMEOUT_MS = 50000; // Parallel race — wait up to 50s for any model to respond
 const VISION_TIMEOUT_MS = 24000;
 
 function withTimeout(promise, timeoutMs, label) {
@@ -205,7 +205,7 @@ async function geminiGenerateText(prompt, apiKey) {
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // Try gemini-2.0-flash first, fall back to 1.5-flash (separate quota bucket)
-    const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    const models = ['gemini-2.0-flash', 'gemini-1.5-flash-latest'];
     let lastErr;
     for (const modelId of models) {
         try {
@@ -358,14 +358,23 @@ async function nvidiaGenerateVision(prompt, imageBase64, mimeType, apiKey) {
 
 // ─── OpenRouter Provider ───
 
-// Free models on OpenRouter — verified working, ordered best-to-worst for JSON tasks.
+// All free models on OpenRouter — raced in parallel so first response wins.
+// Rate-limited models fail fast (<1s) so they don't slow things down.
 const OPENROUTER_TEXT_MODELS = [
-    'openai/gpt-oss-120b:free',                  // Large OSS model, reliable JSON
-    'nvidia/nemotron-3-super-120b-a12b:free',     // Nvidia 120B, strong
-    'openai/gpt-oss-20b:free',                    // Smaller but reliable
-    'arcee-ai/trinity-large-preview:free',         // Reliable fallback
-    'meta-llama/llama-3.3-70b-instruct:free',     // Large, sometimes rate-limited
-    'google/gemma-3-12b-it:free',                 // Sometimes rate-limited
+    'liquid/lfm-2.5-1.2b-instruct:free',              // Very fast (3-4s), good JSON
+    'google/gemma-3-12b-it:free',                      // Reliable mid-size
+    'google/gemma-3-27b-it:free',                      // Larger Gemma
+    'meta-llama/llama-3.3-70b-instruct:free',          // Large Llama
+    'nousresearch/hermes-3-llama-3.1-405b:free',       // Very large, excellent JSON
+    'minimax/minimax-m2.5:free',                       // Large model
+    'openai/gpt-oss-20b:free',                         // OSS via OpenRouter
+    'openai/gpt-oss-120b:free',                        // Large OSS model
+    'nvidia/nemotron-3-super-120b-a12b:free',          // Nvidia large
+    'nvidia/nemotron-nano-9b-v2:free',                 // Nvidia smaller
+    'arcee-ai/trinity-large-preview:free',             // Trinity large
+    'arcee-ai/trinity-mini:free',                      // Trinity mini
+    'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', // Dolphin 24B
+    'meta-llama/llama-3.2-3b-instruct:free',           // Small fast Llama
 ];
 
 async function openrouterGenerateText(prompt, apiKey) {
@@ -378,33 +387,35 @@ async function openrouterGenerateText(prompt, apiKey) {
         },
     });
 
-    const errors = [];
-    for (const model of OPENROUTER_TEXT_MODELS) {
-        try {
-            const completion = await withTimeout(
-                client.chat.completions.create({
-                    model,
-                    messages: [
-                        { role: 'system', content: 'You are a helpful nutrition and grocery analytics AI. Always respond with valid JSON only, no markdown formatting.' },
-                        { role: 'user', content: prompt },
-                    ],
-                    temperature: 0.4,
-                    max_tokens: 3200,
-                }),
-                OPENROUTER_TIMEOUT_MS,
-                `OpenRouter ${model} request`
-            );
-            const text = completion.choices[0]?.message?.content;
-            if (!text) throw new Error('Empty response from model');
-            return text;
-        } catch (err) {
-            errors.push(`${model}: ${err.message}`);
-            if (!isQuotaError(err)) {
-                // Non-quota error (e.g. model unavailable) — try next
-            }
-        }
+    // Race all models in parallel — first valid response wins, rest are cancelled
+    const attempts = OPENROUTER_TEXT_MODELS.map(async (model) => {
+        const completion = await withTimeout(
+            client.chat.completions.create({
+                model,
+                messages: [
+                    { role: 'system', content: 'You are a helpful nutrition and grocery analytics AI. Always respond with valid JSON only, no markdown formatting.' },
+                    { role: 'user', content: prompt },
+                ],
+                temperature: 0.4,
+                max_tokens: 3200,
+            }),
+            OPENROUTER_TIMEOUT_MS,
+            `OpenRouter ${model} request`
+        );
+        const text = completion.choices[0]?.message?.content;
+        if (!text) throw new Error(`${model}: Empty response`);
+        return text;
+    });
+
+    // Promise.any — resolves with first success, rejects only if ALL fail
+    try {
+        return await Promise.any(attempts);
+    } catch (aggregateErr) {
+        const msgs = aggregateErr.errors?.map((e, i) =>
+            `${OPENROUTER_TEXT_MODELS[i]}: ${e.message}`
+        ) || [aggregateErr.message];
+        throw new Error(`OpenRouter models failed. ${msgs.join(' | ')}`);
     }
-    throw new Error(`OpenRouter models failed. ${errors.join(' | ')}`);
 }
 
 // ─── Public API ───

@@ -354,7 +354,7 @@ function DietPlansPageContent() {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload),
-                    }, 70000);
+                    }, 80000);
                     let data;
                     try {
                         data = await response.json();
@@ -442,7 +442,7 @@ function DietPlansPageContent() {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(inputParams),
-                    }, 60000);
+                    }, 70000);
                     let data;
                     try {
                         data = await response.json();
