@@ -338,7 +338,7 @@ export default function FriendSearch() {
                 </div>
               </div>
               <div className="friend-actions">
-                <a href={`/dashboard/compare/${friendship.profiles.id}`} className="compare-btn">
+                <a href="/dashboard/social#comparison" className="compare-btn">
                   Compare
                 </a>
                 <button 

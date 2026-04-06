@@ -285,7 +285,7 @@ function FriendCard({ friend, onSelect, onRemove }) {
       )}
 
       <div className="friend-actions">
-        <button className="action-btn compare" onClick={(e) => { e.stopPropagation(); alert('Compare feature coming soon!'); }}>
+        <button className="action-btn compare" onClick={(e) => { e.stopPropagation(); document.getElementById('friend-comparison')?.scrollIntoView({ behavior: 'smooth' }); }}>
           📊 Compare
         </button>
         <button className="action-btn challenge" onClick={(e) => { e.stopPropagation(); alert('Challenge feature coming soon!'); }}>
@@ -357,7 +357,7 @@ function FriendDetailModal({ friend, onClose, onRemove }) {
         )}
 
         <div className="modal-actions">
-          <button className="modal-action-btn compare">📊 View Full Comparison</button>
+          <button className="modal-action-btn compare" onClick={() => { onClose(); setTimeout(() => document.getElementById('friend-comparison')?.scrollIntoView({ behavior: 'smooth' }), 200); }}>📊 View Full Comparison</button>
           <button className="modal-action-btn challenge">⚔️ Create Challenge</button>
           <button className="modal-action-btn message">💬 Send Message</button>
           <button className="modal-action-btn remove" onClick={onRemove}>

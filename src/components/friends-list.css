@@ -60,10 +60,11 @@
 /* Friends Grid */
 .friends-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-lg);
 }
 
+/* Friend Card */
 .friend-card {
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
@@ -73,6 +74,9 @@
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-base);
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
 .friend-card:hover {
@@ -81,11 +85,11 @@
   border-color: var(--border-glass-hover);
 }
 
+/* Card header: avatar + name */
 .friend-card-header {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  margin-bottom: var(--space-lg);
 }
 
 .friend-avatar-wrapper {
@@ -94,20 +98,21 @@
 }
 
 .friend-avatar {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: var(--radius-full);
   object-fit: cover;
   border: 2px solid var(--border-glass-hover);
   background: var(--gradient-cool);
+  display: block;
 }
 
 .online-indicator {
   position: absolute;
   bottom: 2px;
   right: 2px;
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   background: var(--accent-green);
   border: 2px solid var(--bg-secondary);
   border-radius: var(--radius-full);
@@ -120,57 +125,59 @@
 }
 
 .friend-name {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 2px;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--text-primary);
+  margin-bottom: 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .friend-mode {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-tertiary);
 }
 
-/* Stats */
+/* Stats row */
 .friend-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-sm);
-  margin-bottom: var(--space-lg);
 }
 
 .stat-item {
-  text-align: center;
-  padding: 10px var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 6px;
   background: var(--bg-glass);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
+  gap: 3px;
 }
 
 .stat-icon {
-  font-size: 1.3rem;
-  margin-bottom: 3px;
+  font-size: 1.2rem;
 }
 
 .stat-value {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 2px;
+  line-height: 1;
 }
 
 .stat-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--text-tertiary);
+  text-align: center;
+  line-height: 1.2;
 }
 
-/* Goal */
+/* Goal bar */
 .friend-goal {
-  margin-bottom: var(--space-md);
-  padding: var(--space-md);
+  padding: 10px var(--space-md);
   background: var(--accent-yellow-dim);
   border: 1px solid var(--accent-yellow);
   border-radius: var(--radius-md);
@@ -180,7 +187,7 @@
   font-weight: 600;
   margin-bottom: 6px;
   color: var(--accent-yellow);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .goal-progress {
@@ -191,7 +198,7 @@
 
 .progress-bar-mini {
   flex: 1;
-  height: 6px;
+  height: 5px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: var(--radius-full);
   overflow: hidden;
@@ -205,41 +212,43 @@
 }
 
 .progress-text-mini {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--accent-yellow);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-/* Challenges Badge */
+/* Challenges badge */
 .active-challenges-badge {
-  padding: 8px var(--space-md);
+  padding: 7px var(--space-md);
   background: var(--accent-blue-dim);
   border: 1px solid var(--accent-blue);
   color: var(--accent-blue);
   border-radius: var(--radius-md);
   text-align: center;
   font-weight: 600;
-  font-size: 0.85rem;
-  margin-bottom: var(--space-md);
+  font-size: 0.8rem;
 }
 
-/* Actions */
+/* Action buttons — always at bottom */
 .friend-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-sm);
+  margin-top: auto;
 }
 
 .action-btn {
-  padding: 10px;
-  border: none;
+  padding: 9px 12px;
   border-radius: var(--radius-md);
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-base);
   font-size: 0.82rem;
-  min-height: 40px;
+  min-height: 38px;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .action-btn.compare {
@@ -256,11 +265,10 @@
 
 .action-btn:hover {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
   filter: brightness(1.15);
 }
 
-/* Empty State */
+/* Empty state */
 .empty-state {
   text-align: center;
   padding: var(--space-3xl) var(--space-xl);
@@ -271,7 +279,7 @@
 }
 
 .empty-icon {
-  font-size: 4.5rem;
+  font-size: 4rem;
   margin-bottom: var(--space-md);
 }
 
@@ -307,7 +315,7 @@
   border: 1px solid var(--border-glass-hover);
   border-radius: var(--radius-xl);
   padding: var(--space-xl);
-  max-width: 580px;
+  max-width: 520px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -320,12 +328,12 @@
   position: absolute;
   top: var(--space-md);
   right: var(--space-md);
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--border-glass);
   background: var(--bg-glass);
   border-radius: var(--radius-full);
-  font-size: 1.1rem;
+  font-size: 1rem;
   cursor: pointer;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
@@ -346,8 +354,8 @@
 }
 
 .modal-avatar {
-  width: 90px;
-  height: 90px;
+  width: 80px;
+  height: 80px;
   border-radius: var(--radius-full);
   object-fit: cover;
   border: 3px solid var(--border-glass-hover);
@@ -357,21 +365,21 @@
 
 .modal-header h2 {
   font-family: 'Outfit', sans-serif;
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   color: var(--text-primary);
 }
 
 .modal-mode {
   color: var(--text-tertiary);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .modal-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-md);
+  gap: var(--space-sm);
   margin-bottom: var(--space-xl);
   padding: var(--space-lg);
   background: var(--bg-glass);
@@ -384,14 +392,14 @@
 }
 
 .modal-stat-value {
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--accent-green);
   margin-bottom: 3px;
 }
 
 .modal-stat-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-tertiary);
 }
 
@@ -404,15 +412,13 @@
 }
 
 .modal-goal-section h3 {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   margin-bottom: var(--space-md);
   color: var(--text-primary);
 }
 
-.modal-goal-details {
-  text-align: center;
-}
+.modal-goal-details { text-align: center; }
 
 .modal-goal-type {
   font-size: 1rem;
@@ -424,11 +430,11 @@
 .modal-goal-numbers {
   color: var(--text-tertiary);
   margin-bottom: 6px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .modal-current-weight {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--accent-green);
 }
@@ -439,11 +445,11 @@
 }
 
 .modal-action-btn {
-  padding: var(--space-md);
+  padding: 12px var(--space-md);
   border: none;
   border-radius: var(--radius-md);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   cursor: pointer;
   transition: all var(--transition-base);
   min-height: 44px;
@@ -480,7 +486,6 @@
 .loading {
   text-align: center;
   padding: var(--space-2xl);
-  font-size: 1rem;
   color: var(--text-tertiary);
 }
 
@@ -491,9 +496,5 @@
 
   .modal-stats {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .friend-stats {
-    gap: var(--space-sm);
   }
 }

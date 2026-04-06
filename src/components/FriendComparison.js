@@ -216,7 +216,7 @@ export default function FriendComparison() {
 
   if (friends.length === 0) {
     return (
-      <div className="friend-comparison-container">
+      <div id="friend-comparison" className="friend-comparison-container">
         <div className="comparison-header">
           <h2>📊 Compare with Friends</h2>
         </div>
