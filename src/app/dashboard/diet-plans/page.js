@@ -355,9 +355,16 @@ function DietPlansPageContent() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload),
                     }, 70000);
-                    const data = await response.json();
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch {
+                        throw new Error('AI service is temporarily unavailable. All providers are rate-limited or timed out. Please try again in a few minutes.');
+                    }
                     if (!response.ok) {
-                        throw new Error(data.error || 'Failed to generate diet plan');
+                        // Surface the full provider error only if it's a user-friendly message
+                        const msg = data.error || 'Failed to generate diet plan';
+                        throw new Error(msg.startsWith('All AI providers failed') ? 'All AI providers are currently unavailable (quota exceeded or timeout). Please try again later.' : msg);
                     }
                     if (data.historyId) {
                         setActivePlanId(data.historyId);
@@ -436,9 +443,15 @@ function DietPlansPageContent() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(inputParams),
                     }, 60000);
-                    const data = await response.json();
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch {
+                        throw new Error('AI service is temporarily unavailable. Please try again in a few minutes.');
+                    }
                     if (!response.ok) {
-                        throw new Error(data.error || 'Failed to generate meal plan');
+                        const msg = data.error || 'Failed to generate meal plan';
+                        throw new Error(msg.startsWith('All AI providers failed') ? 'All AI providers are currently unavailable. Please try again later.' : msg);
                     }
                     return { data: data.data, provider: data.provider };
                 },

@@ -1,6 +1,6 @@
 /**
  * Multi-provider AI system with automatic fallback.
- * Chain: Nvidia → Google Gemini → OpenAI
+ * Chain: OpenRouter → Nvidia → Google Gemini → OpenAI
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -8,13 +8,15 @@ import OpenAI from 'openai';
 
 // Provider names
 export const PROVIDERS = {
+    OPENROUTER: 'openrouter',
     GEMINI: 'gemini',
     OPENAI: 'openai',
     NVIDIA: 'nvidia',
     LOCAL: 'local',
 };
 
-const TEXT_TIMEOUT_MS = 28000;
+const TEXT_TIMEOUT_MS = 15000;
+const OPENROUTER_TIMEOUT_MS = 35000; // Larger models need more generation time
 const VISION_TIMEOUT_MS = 24000;
 
 function withTimeout(promise, timeoutMs, label) {
@@ -33,25 +35,11 @@ function getNvidiaApiKey(envKey) {
 function getNvidiaTextModelConfigs() {
     return [
         {
-            model: 'z-ai/glm4.7',
-            apiKey: getNvidiaApiKey('NVIDIA_GLM47_API_KEY'),
-            temperature: 1,
-            max_tokens: 2600,
-            top_p: 1,
-            timeoutMs: 22000,
-            extra_body: {
-                chat_template_kwargs: {
-                    enable_thinking: false,
-                    clear_thinking: false,
-                },
-            },
-        },
-        {
             model: 'qwen/qwen3.5-122b-a10b',
             apiKey: getNvidiaApiKey('NVIDIA_QWEN_API_KEY'),
             temperature: 0.6,
             max_tokens: 2800,
-            timeoutMs: 22000,
+            timeoutMs: 8000,
             extra_body: {
                 chat_template_kwargs: {
                     enable_thinking: false,
@@ -63,7 +51,7 @@ function getNvidiaTextModelConfigs() {
             apiKey: getNvidiaApiKey('NVIDIA_DEEPSEEK_V32_API_KEY'),
             temperature: 0.4,
             max_tokens: 2400,
-            timeoutMs: 20000,
+            timeoutMs: 7000,
             extra_body: {
                 chat_template_kwargs: {
                     thinking: false,
@@ -76,10 +64,24 @@ function getNvidiaTextModelConfigs() {
             temperature: 0.2,
             max_tokens: 2200,
             top_p: 0.7,
-            timeoutMs: 18000,
+            timeoutMs: 6000,
             extra_body: {
                 chat_template_kwargs: {
                     thinking: false,
+                },
+            },
+        },
+        {
+            model: 'z-ai/glm4.7',
+            apiKey: getNvidiaApiKey('NVIDIA_GLM47_API_KEY'),
+            temperature: 1,
+            max_tokens: 2600,
+            top_p: 1,
+            timeoutMs: 6000,
+            extra_body: {
+                chat_template_kwargs: {
+                    enable_thinking: false,
+                    clear_thinking: false,
                 },
             },
         },
@@ -201,9 +203,22 @@ function isQuotaError(error) {
 
 async function geminiGenerateText(prompt, apiKey) {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await withTimeout(model.generateContent(prompt), TEXT_TIMEOUT_MS, 'Gemini text request');
-    return result.response.text();
+
+    // Try gemini-2.0-flash first, fall back to 1.5-flash (separate quota bucket)
+    const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    let lastErr;
+    for (const modelId of models) {
+        try {
+            const model = genAI.getGenerativeModel({ model: modelId });
+            const result = await withTimeout(model.generateContent(prompt), TEXT_TIMEOUT_MS, `Gemini ${modelId} text request`);
+            return result.response.text();
+        } catch (err) {
+            lastErr = err;
+            // Only fall back on quota/rate errors, not auth errors
+            if (!isQuotaError(err)) throw err;
+        }
+    }
+    throw lastErr;
 }
 
 async function geminiGenerateVision(prompt, imageBase64, mimeType, apiKey) {
@@ -341,62 +356,118 @@ async function nvidiaGenerateVision(prompt, imageBase64, mimeType, apiKey) {
     return completion.choices[0].message.content;
 }
 
+// ─── OpenRouter Provider ───
+
+// Free models on OpenRouter — verified working, ordered best-to-worst for JSON tasks.
+const OPENROUTER_TEXT_MODELS = [
+    'openai/gpt-oss-120b:free',                  // Large OSS model, reliable JSON
+    'nvidia/nemotron-3-super-120b-a12b:free',     // Nvidia 120B, strong
+    'openai/gpt-oss-20b:free',                    // Smaller but reliable
+    'arcee-ai/trinity-large-preview:free',         // Reliable fallback
+    'meta-llama/llama-3.3-70b-instruct:free',     // Large, sometimes rate-limited
+    'google/gemma-3-12b-it:free',                 // Sometimes rate-limited
+];
+
+async function openrouterGenerateText(prompt, apiKey) {
+    const client = new OpenAI({
+        apiKey,
+        baseURL: 'https://openrouter.ai/api/v1',
+        defaultHeaders: {
+            'HTTP-Referer': 'https://foodlimit.app',
+            'X-Title': 'FoodLimit',
+        },
+    });
+
+    const errors = [];
+    for (const model of OPENROUTER_TEXT_MODELS) {
+        try {
+            const completion = await withTimeout(
+                client.chat.completions.create({
+                    model,
+                    messages: [
+                        { role: 'system', content: 'You are a helpful nutrition and grocery analytics AI. Always respond with valid JSON only, no markdown formatting.' },
+                        { role: 'user', content: prompt },
+                    ],
+                    temperature: 0.4,
+                    max_tokens: 3200,
+                }),
+                OPENROUTER_TIMEOUT_MS,
+                `OpenRouter ${model} request`
+            );
+            const text = completion.choices[0]?.message?.content;
+            if (!text) throw new Error('Empty response from model');
+            return text;
+        } catch (err) {
+            errors.push(`${model}: ${err.message}`);
+            if (!isQuotaError(err)) {
+                // Non-quota error (e.g. model unavailable) — try next
+            }
+        }
+    }
+    throw new Error(`OpenRouter models failed. ${errors.join(' | ')}`);
+}
+
 // ─── Public API ───
 
 /**
  * Generate a text response with automatic provider fallback.
- * Chain: Nvidia → Gemini → OpenAI → throw
+ * Chain: OpenRouter → Nvidia → Gemini → OpenAI → throw
  * Returns { text, provider }
  */
 export async function generateText(prompt) {
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
     const hasNvidiaTextKey = getNvidiaTextModelConfigs().some((config) => Boolean(config.apiKey));
     const errors = [];
 
-    // 1. Try Nvidia
+    // 1. Try OpenRouter (free models, no quota issues)
+    if (openrouterKey) {
+        try {
+            const text = await openrouterGenerateText(prompt, openrouterKey);
+            return { text, provider: PROVIDERS.OPENROUTER };
+        } catch (err) {
+            errors.push(`OpenRouter: ${err.message}`);
+            console.warn('OpenRouter failed, falling back to Nvidia:', err.message);
+        }
+    } else {
+        errors.push('OpenRouter: No API key configured');
+    }
+
+    // 2. Try Nvidia
     if (hasNvidiaTextKey) {
         try {
             const text = await nvidiaGenerateText(prompt);
             return { text, provider: PROVIDERS.NVIDIA };
         } catch (err) {
             errors.push(`Nvidia: ${err.message}`);
-            if (!isQuotaError(err)) {
-                console.warn('Nvidia error, falling back to Gemini:', err.message);
-            }
         }
     } else {
         errors.push('Nvidia: No text model API key configured');
     }
 
-    // 2. Try Gemini
+    // 3. Try Gemini
     if (geminiKey) {
         try {
             const text = await geminiGenerateText(prompt, geminiKey);
             return { text, provider: PROVIDERS.GEMINI };
         } catch (err) {
             errors.push(`Gemini: ${err.message}`);
-            if (!isQuotaError(err)) {
-                console.warn('Gemini non-quota error, falling back to OpenAI:', err.message);
-            }
         }
     }
 
-    // 3. Try OpenAI
+    // 4. Try OpenAI
     if (openaiKey) {
         try {
             const text = await openaiGenerateText(prompt, openaiKey);
             return { text, provider: PROVIDERS.OPENAI };
         } catch (err) {
             errors.push(`OpenAI: ${err.message}`);
-            console.warn('OpenAI error:', err.message);
         }
     }
 
-    // 4. None available
-    throw new Error(
-        `All AI providers failed. ${errors.join(' | ')}${!geminiKey && !openaiKey && !hasNvidiaTextKey ? ' No API keys configured — add NVIDIA_QWEN_API_KEY / NVIDIA_DEEPSEEK_V32_API_KEY / NVIDIA_DEEPSEEK_V31_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY to .env.local.' : ''}`
-    );
+    // 5. None available
+    throw new Error(`All AI providers failed. ${errors.join(' | ')}`);
 }
 
 /**

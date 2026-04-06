@@ -10,6 +10,7 @@ export async function GET() {
     const uptimeSeconds = Math.floor((Date.now() - START_TIME) / 1000);
 
     const providers = {
+        openrouter: !!process.env.OPENROUTER_API_KEY,
         gemini:  !!process.env.GEMINI_API_KEY,
         openai:  !!process.env.OPENAI_API_KEY,
         nvidia:  !!(
