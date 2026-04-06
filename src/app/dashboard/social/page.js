@@ -3,6 +3,7 @@
 import SocialFeed from '@/components/SocialFeed';
 import FriendSearch from '@/components/FriendSearch';
 import FriendsList from '@/components/FriendsList';
+import FriendComparison from '@/components/FriendComparison';
 import NotificationsCenter from '@/components/NotificationsCenter';
 import PrivacySettings from '@/components/PrivacySettings';
 
@@ -12,6 +13,7 @@ export default function SocialPage() {
       <NotificationsCenter />
       <FriendSearch />
       <FriendsList />
+      <FriendComparison />
       <SocialFeed />
       <PrivacySettings />
     </div>

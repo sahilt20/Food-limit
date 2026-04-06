@@ -31,29 +31,39 @@ export default function FriendSearch() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Pending requests (received)
+      // Pending requests (received) — other user is in user_id column
       const { data: pending } = await supabase
         .from('friendships')
-        .select(`
-          *,
-          profiles!friendships_user_id_fkey(id, full_name, avatar_url)
-        `)
+        .select('id, user_id, requested_at')
         .eq('friend_id', user.id)
         .eq('status', 'pending');
 
-      setPendingRequests(pending || []);
+      if (pending?.length) {
+        const ids = pending.map(r => r.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles').select('id, full_name, avatar_url').in('id', ids);
+        const map = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+        setPendingRequests(pending.map(r => ({ ...r, profiles: map[r.user_id] || null })));
+      } else {
+        setPendingRequests([]);
+      }
 
-      // Sent requests
+      // Sent requests — other user is in friend_id column
       const { data: sent } = await supabase
         .from('friendships')
-        .select(`
-          *,
-          profiles!friendships_friend_id_fkey(id, full_name, avatar_url)
-        `)
+        .select('id, friend_id, requested_at')
         .eq('user_id', user.id)
         .eq('status', 'pending');
 
-      setSentRequests(sent || []);
+      if (sent?.length) {
+        const ids = sent.map(r => r.friend_id);
+        const { data: profiles } = await supabase
+          .from('profiles').select('id, full_name, avatar_url').in('id', ids);
+        const map = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+        setSentRequests(sent.map(r => ({ ...r, profiles: map[r.friend_id] || null })));
+      } else {
+        setSentRequests([]);
+      }
     } catch (error) {
       console.error('Error loading requests:', error);
     }
@@ -66,14 +76,19 @@ export default function FriendSearch() {
 
       const { data: friendships } = await supabase
         .from('friendships')
-        .select(`
-          *,
-          profiles!friendships_friend_id_fkey(id, full_name, avatar_url)
-        `)
+        .select('id, friend_id, responded_at')
         .eq('user_id', user.id)
         .eq('status', 'accepted');
 
-      setFriends(friendships || []);
+      if (friendships?.length) {
+        const ids = friendships.map(f => f.friend_id);
+        const { data: profiles } = await supabase
+          .from('profiles').select('id, full_name, avatar_url').in('id', ids);
+        const map = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+        setFriends(friendships.map(f => ({ ...f, profiles: map[f.friend_id] || null })));
+      } else {
+        setFriends([]);
+      }
     } catch (error) {
       console.error('Error loading friends:', error);
     }
@@ -90,17 +105,27 @@ export default function FriendSearch() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Search profiles by name or email
-      const { data: profiles } = await supabase
+      // Search profiles by name
+      const { data: profiles, error: searchError } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url')
-        .or(`full_name.ilike.%${searchQuery}%`)
+        .ilike('full_name', `%${searchQuery}%`)
         .neq('id', user.id)
         .limit(10);
 
+      if (searchError) {
+        console.error('Search error:', searchError);
+        setSearchResults([]);
+        setLoading(false);
+        return;
+      }
+
       // Filter out existing friends and pending requests
-      const friendIds = friends.map(f => f.profiles.id);
-      const pendingIds = [...pendingRequests.map(r => r.profiles.id), ...sentRequests.map(r => r.profiles.id)];
+      const friendIds = friends.map(f => f.friend_id);
+      const pendingIds = [
+        ...pendingRequests.map(r => r.user_id),
+        ...sentRequests.map(r => r.friend_id)
+      ];
       const excludeIds = [...friendIds, ...pendingIds];
 
       const filtered = profiles?.filter(p => !excludeIds.includes(p.id)) || [];
@@ -224,7 +249,7 @@ export default function FriendSearch() {
                     <img src={profile.avatar_url} alt={profile.full_name} className="avatar" />
                   )}
                   <div>
-                    <div className="user-name">{profile.full_name}</div>
+                    <div className="user-name">{profile.full_name || 'Unknown User'}</div>
                   </div>
                 </div>
                 <button 
@@ -250,7 +275,7 @@ export default function FriendSearch() {
                   <img src={request.profiles.avatar_url} alt={request.profiles.full_name} className="avatar" />
                 )}
                 <div>
-                  <div className="user-name">{request.profiles?.full_name}</div>
+                  <div className="user-name">{request.profiles?.full_name || 'Unknown User'}</div>
                   <div className="request-date">
                     {new Date(request.requested_at).toLocaleDateString()}
                   </div>
@@ -286,7 +311,7 @@ export default function FriendSearch() {
                   <img src={request.profiles.avatar_url} alt={request.profiles.full_name} className="avatar" />
                 )}
                 <div>
-                  <div className="user-name">{request.profiles?.full_name}</div>
+                  <div className="user-name">{request.profiles?.full_name || 'Unknown User'}</div>
                   <div className="request-status">⏳ Pending</div>
                 </div>
               </div>
@@ -306,7 +331,7 @@ export default function FriendSearch() {
                   <img src={friendship.profiles.avatar_url} alt={friendship.profiles.full_name} className="avatar" />
                 )}
                 <div>
-                  <div className="user-name">{friendship.profiles?.full_name}</div>
+                  <div className="user-name">{friendship.profiles?.full_name || 'Unknown User'}</div>
                   <div className="friend-since">
                     Friends since {new Date(friendship.responded_at).toLocaleDateString()}
                   </div>
